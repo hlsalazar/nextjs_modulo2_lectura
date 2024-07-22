@@ -4,6 +4,7 @@ const useGazeEvent = (gazeevents) => {
   const [clickPositions, setClickPositions] = useState([]);
   const [matchingEventsArray, setMatchingEventsArray] = useState([]);
   const [message, setMessage] = useState('');
+  const [clickedElement, setClickedElement] = useState(null);
 
   useEffect(() => {
     const handleDocumentClick = (event) => {
@@ -19,9 +20,11 @@ const useGazeEvent = (gazeevents) => {
 
       if (matchingEvents.length > 0) {
         setMatchingEventsArray(prevMatchingEvents => [...prevMatchingEvents, ...matchingEvents]);
-        setMessage(`Clicked at: X=${clickPosition.x}, Y=${clickPosition.y} | Eventos de mirada dentro del área: ${JSON.stringify(matchingEvents)}`);
+        setClickedElement(target);
+        setMessage(`Clicked at: X=${clickPosition.x}, Y=${clickPosition.y} on ${target.tagName} with id=${target.id} | Eventos de mirada dentro del área: ${JSON.stringify(matchingEvents)}`);
       } else {
-        setMessage(`Clicked at: X=${clickPosition.x}, Y=${clickPosition.y} | No hay eventos de mirada dentro del área.`);
+        setClickedElement(target);
+        setMessage(`Clicked at: X=${clickPosition.x}, Y=${clickPosition.y} on ${target.tagName} with id=${target.id} | No hay eventos de mirada dentro del área.`);
       }
     };
 
@@ -31,7 +34,7 @@ const useGazeEvent = (gazeevents) => {
     };
   }, [gazeevents]);
 
-  return { clickPositions, matchingEventsArray, message };
+  return { clickPositions, matchingEventsArray, message, clickedElement };
 };
 
 export default useGazeEvent;

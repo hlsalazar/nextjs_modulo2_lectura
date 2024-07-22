@@ -1,6 +1,5 @@
-"use client"
+"use client";
 
-// src/pages/page.tsx
 import React from 'react';
 import { lusitana } from "../ui/fonts";
 import GazeEventChecker from '../components/GazeEventChecker';
@@ -55,7 +54,6 @@ export default function Page() {
         fetchData();
     }, []);
     
-
     const frequentPoints = getMostFrequentPoints(data);
 
     if (isLoading) {
@@ -67,19 +65,29 @@ export default function Page() {
             <h1 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>Página de prueba</h1>
             <MousePosition />
             <GazeEventChecker gazeEvents={data} />
-            { /*<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {frequentPoints.map((point, index) => (
-                    <div key={index} className="border p-4">
-                        <p>X: {point.x}</p>
-                        <p>Y: {point.y}</p>
-                        <p>Repeticiones: {point.count}</p>
-                    </div>
-                ))}
-                <button id="btn1">Botón 1</button>
-                <button id="btn2">Botón 2</button>
-                <button id="btn3">Botón 3</button>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                
+                <div id="product1" className="product border p-4">
+                    <img src="https://via.placeholder.com/150" alt="Product 1" />
+                    <p>Producto 1</p>
+                    <button id="btn1">Comprar Producto 1</button>
+                </div>
+                <div id="product2" className="product border p-4">
+                    <img src="https://via.placeholder.com/150" alt="Product 2" />
+                    <p>Producto 2</p>
+                    <button id="btn2">Comprar Producto 2</button>
+                </div>
+                <div id="product3" className="product border p-4">
+                    <img src="https://via.placeholder.com/150" alt="Product 3" />
+                    <p>Producto 3</p>
+                    <button id="btn3">Comprar Producto 3</button>
+                </div>
+                <div id="product4" className="product border p-4">
+                    <img src="https://via.placeholder.com/150" alt="Product 4" />
+                    <p>Producto 4</p>
+                    <button id="btn4">Comprar Producto 4</button>
+                </div>
             </div>
-            */}
         </main>
     );
 }
