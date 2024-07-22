@@ -1,4 +1,3 @@
-//components/useGazeEvent.js
 import { useState, useEffect } from 'react';
 
 const useGazeEvent = (gazeevents) => {
@@ -19,16 +18,12 @@ const useGazeEvent = (gazeevents) => {
       });
 
       if (matchingEvents.length > 0) {
-        setMatchingEventsArray(matchingEvents);
+        setMatchingEventsArray(prevMatchingEvents => [...prevMatchingEvents, ...matchingEvents]);
         setMessage(`Clicked at: X=${clickPosition.x}, Y=${clickPosition.y} | Eventos de mirada dentro del área: ${JSON.stringify(matchingEvents)}`);
       } else {
         setMessage(`Clicked at: X=${clickPosition.x}, Y=${clickPosition.y} | No hay eventos de mirada dentro del área.`);
       }
-      console.log("MISDATOS", gazeevents)
-      console.log("DUMMY", gazeevents)
-      console.log("MATCHING", matchingEvents)
     };
-
 
     document.addEventListener('click', handleDocumentClick);
     return () => {
