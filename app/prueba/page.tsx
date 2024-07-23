@@ -144,8 +144,8 @@ export default function Page() {
     return (
         <main id="main-content" className="flex h-screen items-center justify-center p-2">
             <h1 id="page-title" className={`${lusitana.className} mb-2 text-lg`}>Página de prueba</h1>
-            <MousePosition id="mouse-position" />
-            <GazeEventChecker id="gaze-event-checker" gazeEvents={data} />
+            <MousePosition  />
+            <GazeEventChecker  gazeEvents={data} />
 
             <div className="flex w-full h-full max-w-screen-xl">
                 <div id="image-gallery" className="flex-1 h-full p-2">
