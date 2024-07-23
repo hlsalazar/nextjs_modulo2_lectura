@@ -27,7 +27,7 @@ const GazeEventChecker = ({ gazeEvents }) => {
           X={point.docX}, Y={point.docY}
         </div>
       ))}
-      <div>{message}</div>
+      {/*<div>{message}</div>
       <div>Clics registrados:</div>
       {clickPositions.map((pos, index) => (
         <div key={index}>Clic {index + 1}: X={pos.x}, Y={pos.y}</div>
@@ -36,7 +36,7 @@ const GazeEventChecker = ({ gazeEvents }) => {
       {matchingEventsArray.map((event, index) => (
         <div key={index}>Evento {index + 1}: X={event.docX}, Y={event.docY}</div>
       ))}
-      <div>Elemento clicado: {clickedElement ? `${clickedElement.tagName} with id=${clickedElement.id}` : 'Ninguno'}</div>
+      <div>Elemento clicado: {clickedElement ? `${clickedElement.tagName} with id=${clickedElement.id}` : 'Ninguno'}</div> */}
     </div>
   );
 };
