@@ -1,36 +1,37 @@
-import React from 'react';
+"use client"
+
+import React, { useState } from 'react';
 
 const ExampleComponent = () => {
+  const initialDivs = [
+    { id: 1, content: 'Este es el contenido del primer div cuadrado.', style: 'square' },
+    { id: 2, content: 'Este es el contenido del segundo div horizontal.', style: 'horizontal' },
+    { id: 3, content: 'Este es el contenido del tercer div vertical.', style: 'vertical' },
+    { id: 4, content: 'Este es el contenido del cuarto div cuadrado.', style: 'square' },
+    { id: 5, content: 'Este es el contenido del quinto div horizontal.', style: 'horizontal' },
+    { id: 6, content: 'Este es el contenido del sexto div vertical.', style: 'vertical' },
+    { id: 7, content: 'Este es el contenido del séptimo div cuadrado.', style: 'square' }
+  ];
+
+  const [divs, setDivs] = useState(initialDivs);
+
+  const updateDivContents = () => {
+    const updatedDivs = divs.map(div => ({
+      ...div,
+      content: `Div ${div.id} con un nuevo número aleatorio: ${Math.floor(Math.random() * 101)}.`
+    }));
+    setDivs(updatedDivs);
+  };
+
   return (
     <div style={styles.gridContainer}>
-      <div style={{ ...styles.gridItem, ...styles.square }}>
-        <h2>Div 1</h2>
-        <p>Este es el contenido del primer div cuadrado.</p>
-      </div>
-      <div style={{ ...styles.gridItem, ...styles.horizontal }}>
-        <h2>Div 2</h2>
-        <p>Este es el contenido del segundo div horizontal.</p>
-      </div>
-      <div style={{ ...styles.gridItem, ...styles.vertical }}>
-        <h2>Div 3</h2>
-        <p>Este es el contenido del tercer div vertical.</p>
-      </div>
-      <div style={{ ...styles.gridItem, ...styles.square }}>
-        <h2>Div 4</h2>
-        <p>Este es el contenido del cuarto div cuadrado.</p>
-      </div>
-      <div style={{ ...styles.gridItem, ...styles.horizontal }}>
-        <h2>Div 5</h2>
-        <p>Este es el contenido del quinto div horizontal.</p>
-      </div>
-      <div style={{ ...styles.gridItem, ...styles.vertical }}>
-        <h2>Div 6</h2>
-        <p>Este es el contenido del sexto div vertical.</p>
-      </div>
-      <div style={{ ...styles.gridItem, ...styles.square }}>
-        <h2>Div 7</h2>
-        <p>Este es el contenido del séptimo div cuadrado.</p>
-      </div>
+      {divs.map(div => (
+        <div key={div.id} style={{ ...styles.gridItem, ...styles[div.style] }}>
+          <h2>Div {div.id}</h2>
+          <p>{div.content}</p>
+        </div>
+      ))}
+      <button onClick={updateDivContents}>Update Div Contents</button>
     </div>
   );
 };
@@ -38,12 +39,12 @@ const ExampleComponent = () => {
 const styles = {
   gridContainer: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)', // Cuatro columnas de igual tamaño
-    gridTemplateRows: 'repeat(3, 1fr)', // Tres filas de igual tamaño
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gridTemplateRows: 'repeat(3, 1fr)',
     gap: '20px',
     padding: '20px',
-    height: '100vh', // Ocupa toda la altura de la pantalla
-    width: '100vw', // Ocupa todo el ancho de la pantalla
+    height: '100vh',
+    width: '100vw',
   },
   gridItem: {
     border: '1px solid #000',
@@ -51,19 +52,19 @@ const styles = {
     padding: '20px',
     background: '#f0f0f0',
     textAlign: 'center',
-    boxSizing: 'border-box', // Asegura que padding y border se incluyan en el tamaño total
+    boxSizing: 'border-box',
   },
   square: {
-    gridColumn: 'span 1', // Ocupa una columna
-    gridRow: 'span 1', // Ocupa una fila
+    gridColumn: 'span 1',
+    gridRow: 'span 1',
   },
   horizontal: {
-    gridColumn: 'span 2', // Ocupa dos columnas
-    gridRow: 'span 1', // Ocupa una fila
+    gridColumn: 'span 2',
+    gridRow: 'span 1',
   },
   vertical: {
-    gridColumn: 'span 1', // Ocupa una columna
-    gridRow: 'span 2', // Ocupa dos filas
+    gridColumn: 'span 1',
+    gridRow: 'span 2',
   },
 };
 
