@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
+import { Carousel } from 'react-responsive-carousel';
+import "react-responsive-carousel/lib/styles/carousel.min.css";
 
 const ExampleComponent = () => {
   const [divs, setDivs] = useState([]);
@@ -26,12 +28,21 @@ const ExampleComponent = () => {
 
   return (
     <div style={styles.gridContainer}>
-      {divs.map(div => (
+      {divs.map((div, index) => (
         <div key={div.id} style={{ ...styles.gridItem, ...parseStyle(div.style) }}>
           <h2 style={styles.header}>Div {div.id}</h2>
           <div style={styles.contentContainer}>
-            <div dangerouslySetInnerHTML={{ __html: div.content }} style={styles.innerContent} />
+            <div style={styles.innerContent} dangerouslySetInnerHTML={{ __html: div.content }} />
           </div>
+          {div.id === 1 && (
+            <Carousel showArrows={true} infiniteLoop={true} showThumbs={false} className="h-full">
+              {JSON.parse(div.content).map((image, index) => (
+                <div key={index} className="h-full">
+                  <img src={image.src} alt={image.alt} className="object-cover object-center h-full" />
+                </div>
+              ))}
+            </Carousel>
+          )}
         </div>
       ))}
       <button onClick={updateDivContents}>Update Div Contents</button>
@@ -63,7 +74,7 @@ const styles = {
   gridItem: {
     border: '1px solid #000',
     borderRadius: '5px',
-    padding: '20px',
+    padding: '0', // Eliminar padding para que el contenido ocupe todo el espacio
     background: '#f0f0f0',
     textAlign: 'center',
     boxSizing: 'border-box',
@@ -75,6 +86,7 @@ const styles = {
   },
   contentContainer: {
     display: 'flex',
+    flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
@@ -82,15 +94,15 @@ const styles = {
   },
   innerContent: {
     display: 'flex',
-    flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
+    height: '100%',
   },
   img: {
-    maxWidth: '100%',
-    maxHeight: '100%',
-    objectFit: 'contain', // Asegurarse de que la imagen se ajuste al contenedor
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover', // Asegurarse de que la imagen ocupe todo el contenedor
   },
   header: {
     margin: '0 0 10px 0',
