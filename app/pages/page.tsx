@@ -10,7 +10,6 @@ import "react-responsive-carousel/lib/styles/carousel.min.css";
 import { Carousel } from 'react-responsive-carousel';
 import Link from 'next/link';
 
-
 interface Point {
     x: number;
     y: number;
@@ -147,6 +146,7 @@ export default function Page() {
 
     const handleClickEsconder = () => {
         setShowHighlightedPage(false);
+        saveElementsToLocalStorage();
     }
 
     const handleShowMatchingElements = () => {
@@ -155,6 +155,22 @@ export default function Page() {
 
     const handleHideMatchingElements = () => {
         setShowMatchingElements(false);
+    }
+
+    const saveElementsToLocalStorage = () => {
+        const elements = document.querySelectorAll<HTMLElement>(
+            "[id^='image'], #product-name, #product-price, #reviews-link, #color-label, [id^='color-span-'], #size-label, #size-guide, [id^='size-span-'], #add-to-bag-button, #description-text, #highlights-list, [id^='highlight-span-'], #details-text"
+        );
+
+        const elementsArray = Array.from(elements);
+        const elementsData = elementsArray.map(element => ({
+            id: element.id,
+            content: element.innerHTML,
+            style: window.getComputedStyle(element).cssText,
+        }));
+
+        localStorage.setItem('previousDivs', JSON.stringify(elementsData));
+        console.log('Elementos guardados en localStorage:', elementsData);
     }
 
     if (isLoading) {
@@ -408,6 +424,10 @@ export default function Page() {
                     {/* Botón adicional */}
                     <button onClick={handleClick} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
                         Ver Elementos Resaltados
+                    </button>
+
+                    <button onClick={handleClickEsconder} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
+                        Generar Sugerencia
                     </button>
                 </main>
             ) : (

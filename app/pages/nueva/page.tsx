@@ -1,34 +1,37 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const ExampleComponent = () => {
-  const initialDivs = [
-    { id: 1, content: 'Este es el contenido del primer div cuadrado.', style: 'square' },
-    { id: 2, content: 'Este es el contenido del segundo div horizontal.', style: 'horizontal' },
-    { id: 3, content: 'Este es el contenido del tercer div vertical.', style: 'vertical' },
-    { id: 4, content: 'Este es el contenido del cuarto div cuadrado.', style: 'square' },
-    { id: 5, content: 'Este es el contenido del quinto div horizontal.', style: 'horizontal' },
-    { id: 6, content: 'Este es el contenido del sexto div vertical.', style: 'vertical' },
-    { id: 7, content: 'Este es el contenido del séptimo div cuadrado.', style: 'square' }
-  ];
+  const [divs, setDivs] = useState([]);
 
-  const [divs, setDivs] = useState(initialDivs);
+  useEffect(() => {
+    // Obtener información de localStorage al montar el componente
+    const storedDivs = JSON.parse(localStorage.getItem('previousDivs'));
+    if (storedDivs) {
+      setDivs(storedDivs);
+    }
+  }, []);
 
   const updateDivContents = () => {
-    const updatedDivs = divs.map(div => ({
-      ...div,
-      content: `Div ${div.id} con un nuevo número aleatorio: ${Math.floor(Math.random() * 101)}.`
-    }));
-    setDivs(updatedDivs);
+    const storedDivs = JSON.parse(localStorage.getItem('previousDivs'));
+    if (storedDivs) {
+      const updatedDivs = storedDivs.map(div => ({
+        ...div,
+        content: div.content // Mantener el contenido original
+      }));
+      setDivs(updatedDivs);
+    }
   };
 
   return (
     <div style={styles.gridContainer}>
       {divs.map(div => (
-        <div key={div.id} style={{ ...styles.gridItem, ...styles[div.style] }}>
-          <h2>Div {div.id}</h2>
-          <p>{div.content}</p>
+        <div key={div.id} style={{ ...styles.gridItem, ...parseStyle(div.style) }}>
+          <h2 style={styles.header}>Div {div.id}</h2>
+          <div style={styles.contentContainer}>
+            <div dangerouslySetInnerHTML={{ __html: div.content }} style={styles.innerContent} />
+          </div>
         </div>
       ))}
       <button onClick={updateDivContents}>Update Div Contents</button>
@@ -36,15 +39,26 @@ const ExampleComponent = () => {
   );
 };
 
+const parseStyle = (styleString) => {
+  const style = {};
+  styleString.split(';').forEach(item => {
+    const [key, value] = item.split(':');
+    if (key && value) {
+      style[key.trim()] = value.trim();
+    }
+  });
+  return style;
+};
+
 const styles = {
   gridContainer: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
-    gridTemplateRows: 'repeat(3, 1fr)',
+    gridTemplateRows: 'auto',
     gap: '20px',
     padding: '20px',
-    height: '100vh',
     width: '100vw',
+    justifyContent: 'center', // Centrar la rejilla horizontalmente
   },
   gridItem: {
     border: '1px solid #000',
@@ -53,6 +67,33 @@ const styles = {
     background: '#f0f0f0',
     textAlign: 'center',
     boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden', // Asegurarse de que el contenido no se salga del div
+  },
+  contentContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  innerContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  img: {
+    maxWidth: '100%',
+    maxHeight: '100%',
+    objectFit: 'contain', // Asegurarse de que la imagen se ajuste al contenedor
+  },
+  header: {
+    margin: '0 0 10px 0',
   },
   square: {
     gridColumn: 'span 1',
