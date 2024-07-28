@@ -1,5 +1,5 @@
 import React from 'react';
-import useGazeEvent from '../components/useGazeEvent'; // Actualiza la ruta según tu estructura de carpetas
+import useGazeEvent from '../hooks/useGazeEvent'; // Actualiza la ruta según tu estructura de carpetas
 
 const GazeEventChecker = ({ gazeEvents }) => {
   const transformedGazeEvents = gazeEvents.map(point => ({
