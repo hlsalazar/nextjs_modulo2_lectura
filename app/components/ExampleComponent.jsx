@@ -14,17 +14,6 @@ const ExampleComponent = ({ rankedElements }) => {
     }
   }, []);
 
-  const updateDivContents = () => {
-    const storedDivs = JSON.parse(localStorage.getItem('previousDivs'));
-    if (storedDivs) {
-      const updatedDivs = storedDivs.map(div => ({
-        ...div,
-        content: div.content 
-      }));
-      setDivs(updatedDivs);
-    }
-  };
-
   const parseStyle = (styleString) => {
     const style = {};
     if (styleString) {
@@ -38,35 +27,30 @@ const ExampleComponent = ({ rankedElements }) => {
     return style;
   };
 
-  const renderCarousel = (div) => {
-    let images;
-    try {
-      images = JSON.parse(div.content);
-    } catch (e) {
-      return (
-        <div dangerouslySetInnerHTML={{ __html: div.content }} />
-      );
-    }
-    if (Array.isArray(images)) {
-      return (
-        <Carousel showArrows={true} infiniteLoop={true} showThumbs={false} className="h-full w-full">
-          {images.map((image, index) => (
-            <div key={index} className="h-full w-full">
-              <img src={image.src} alt={image.alt} className="object-cover object-center h-full w-full" />
-            </div>
-          ))}
-        </Carousel>
-      );
-    }
-    return null;
-  };
-
   return (
     <div style={styles.gridContainer}>
       {divs.map((div) => (
-        <div key={div.id} style={{ ...styles.gridItem, ...parseStyle(div.style) }}>
+        <div
+          key={div.id}
+          style={{
+            ...styles.gridItem,
+            ...parseStyle(div.style),
+            ...(rankedElements.includes(div.id) && { backgroundColor: 'yellow' }),
+          }}
+        >
+          <h2 style={styles.header}>Div {div.id}</h2>
           {div.id === 'image-gallery' ? (
-            renderCarousel(div)
+            <Carousel showArrows={true} infiniteLoop={true} showThumbs={false} className="h-full w-full">
+              {isValidJSON(div.content) ? (
+                JSON.parse(div.content).map((image, index) => (
+                  <div key={index} className="h-full w-full">
+                    <img src={image.src} alt={image.alt} className="object-cover object-center h-full w-full" />
+                  </div>
+                ))
+              ) : (
+                <div dangerouslySetInnerHTML={{ __html: div.content }} />
+              )}
+            </Carousel>
           ) : (
             <div style={styles.contentContainer}>
               <div style={styles.innerContent} dangerouslySetInnerHTML={{ __html: div.content }} />
@@ -74,16 +58,25 @@ const ExampleComponent = ({ rankedElements }) => {
           )}
         </div>
       ))}
-      <button onClick={updateDivContents}>Update Div Contents</button>
+      <button onClick={() => setDivs(JSON.parse(localStorage.getItem('previousDivs')))}>Update Div Contents</button>
     </div>
   );
+};
+
+const isValidJSON = (str) => {
+  try {
+    JSON.parse(str);
+  } catch (e) {
+    return false;
+  }
+  return true;
 };
 
 const styles = {
   gridContainer: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
-    gridTemplateRows: 'auto',
+    gridAutoRows: 'minmax(100px, auto)',
     gap: '20px',
     padding: '20px',
     width: '100vw',

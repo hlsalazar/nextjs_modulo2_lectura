@@ -21,7 +21,7 @@ const useGazeData = () => {
   useEffect(() => {
     if (gazeEvents && gazeEvents.length > 0) {
       // Aquí puedes aplicar tu algoritmo para clasificar y sugerir la disposición de los elementos
-      setRankedElements(gazeEvents);
+      setRankedElements(gazeEvents.map(event => event.id));
     }
   }, [gazeEvents]);
 

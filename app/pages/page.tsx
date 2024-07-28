@@ -65,7 +65,7 @@ const product = {
     colors: [
         { name: 'White', class: 'bg-white', selectedClass: 'ring-gray-400' },
         { name: 'Gray', class: 'bg-gray-200', selectedClass: 'ring-gray-400' },
-        { name: 'Black', class: 'bg-gray-900', selectedClass: 'ring-gray-900' },
+        { name: 'Black', class: 'bg-gray-900', selectedClass: 'ring-900' },
     ],
     sizes: [
         { name: 'XXS', inStock: false },
@@ -163,14 +163,19 @@ export default function Page() {
         );
 
         const elementsArray = Array.from(elements);
-        const elementsData = elementsArray.map(element => ({
-            id: element.id,
-            content: element.innerHTML,
-            style: window.getComputedStyle(element).cssText,
-        }));
+        const elementsData = elementsArray.map(element => {
+            const matchedElement = elementsWithPoints.find(e => e.id === element.id);
+            return {
+                id: element.id,
+                content: element.innerHTML,
+                style: window.getComputedStyle(element).cssText,
+                points: matchedElement ? matchedElement.points : []
+            };
+        });
 
         localStorage.setItem('previousDivs', JSON.stringify(elementsData));
         console.log('Elementos guardados en localStorage:', elementsData);
+        console.log('ElementsWithPoints guardado en localStorage:', elementsWithPoints);
     }
 
     if (isLoading) {
@@ -440,8 +445,10 @@ export default function Page() {
                                 <p>{element.points.length} puntos coincidentes</p>
                             </div>
                         ))}
-                        <Link href="/prueba/nueva">
-                            ir a pagina
+                        <Link href="/highlighted-elements" legacyBehavior>
+                            <a className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
+                                Ir a página de elementos resaltados
+                            </a>
                         </Link>
                     </div>
 
