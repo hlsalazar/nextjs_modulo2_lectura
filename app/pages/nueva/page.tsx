@@ -28,20 +28,21 @@ const ExampleComponent = () => {
 
   return (
     <div style={styles.gridContainer}>
-      {divs.map((div, index) => (
+      {divs.map((div) => (
         <div key={div.id} style={{ ...styles.gridItem, ...parseStyle(div.style) }}>
           <h2 style={styles.header}>Div {div.id}</h2>
-          <div style={styles.contentContainer}>
-            <div style={styles.innerContent} dangerouslySetInnerHTML={{ __html: div.content }} />
-          </div>
-          {div.id === 1 && (
-            <Carousel showArrows={true} infiniteLoop={true} showThumbs={false} className="h-full">
+          {div.id === 1 ? (
+            <Carousel showArrows={true} infiniteLoop={true} showThumbs={false} className="h-full w-full">
               {JSON.parse(div.content).map((image, index) => (
-                <div key={index} className="h-full">
-                  <img src={image.src} alt={image.alt} className="object-cover object-center h-full" />
+                <div key={index} className="h-full w-full">
+                  <img src={image.src} alt={image.alt} className="object-cover object-center h-full w-full" />
                 </div>
               ))}
             </Carousel>
+          ) : (
+            <div style={styles.contentContainer}>
+              <div style={styles.innerContent} dangerouslySetInnerHTML={{ __html: div.content }} />
+            </div>
           )}
         </div>
       ))}
