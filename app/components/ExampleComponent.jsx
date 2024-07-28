@@ -27,6 +27,8 @@ const ExampleComponent = ({ rankedElements }) => {
     return style;
   };
 
+  const hasPoints = (div) => div.points && div.points.length > 0;
+
   return (
     <div style={styles.gridContainer}>
       {divs.map((div) => (
@@ -35,7 +37,8 @@ const ExampleComponent = ({ rankedElements }) => {
           style={{
             ...styles.gridItem,
             ...parseStyle(div.style),
-            ...(rankedElements.includes(div.id) && { backgroundColor: 'yellow' }),
+            ...(hasPoints(div) && { backgroundColor: 'lightgreen' }), // Estilo adicional para elementos con puntos
+            ...(rankedElements.includes(div.id) && { borderColor: 'yellow' }), // Otro estilo para elementos en rankedElements
           }}
         >
           <h2 style={styles.header}>Div {div.id}</h2>
