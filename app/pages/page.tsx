@@ -426,7 +426,7 @@ export default function Page() {
                     </div>
 
                     <button onClick={handleClickEsconder} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
-                        Generar Sugerencia
+                        Generar Sugerencia !!!
                     </button>
 
                     {/* Botón para mostrar el recuadro azul */}
