@@ -1,6 +1,6 @@
 "use client";
-
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation'; // Importa desde 'next/navigation'
 import { lusitana } from "../ui/fonts";
 import GazeEventChecker from '../components/GazeEventChecker';
 import MousePosition from '../components/MousePosition';
@@ -9,7 +9,6 @@ import { Radio, RadioGroup } from '@headlessui/react';
 import "react-responsive-carousel/lib/styles/carousel.min.css";
 import { Carousel } from 'react-responsive-carousel';
 import Link from 'next/link';
-
 
 interface Point {
     x: number;
@@ -102,6 +101,8 @@ export default function Page() {
     const [showHighlightedPage, setShowHighlightedPage] = useState(false);
     const [showMatchingElements, setShowMatchingElements] = useState(false); // Estado para controlar la visibilidad del recuadro azul
 
+    const router = useRouter();
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -156,6 +157,13 @@ export default function Page() {
     const handleHideMatchingElements = () => {
         setShowMatchingElements(false);
     }
+
+    const handleSaveAndNavigate = () => {
+        const content = document.querySelectorAll('#image-gallery, #product-details, #product-description');
+        const contentArray = Array.from(content).map((element) => element.outerHTML);
+        localStorage.setItem('pageContent', JSON.stringify(contentArray));
+        router.push('/pages/prueba'); // Ajusta esta ruta según tu estructura de rutas
+    };
 
     if (isLoading) {
         return <div id="loading">Loading...</div>;
@@ -408,6 +416,9 @@ export default function Page() {
                     {/* Botón adicional */}
                     <button onClick={handleClick} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
                         Ver Elementos Resaltados
+                    </button>
+                    <button onClick={handleSaveAndNavigate} className="mt-4 inline-block rounded-md bg-green-500 px-4 py-2 text-white hover:bg-green-600">
+                        Generar Sugerencia !!!
                     </button>
                 </main>
             ) : (
