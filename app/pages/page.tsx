@@ -9,6 +9,9 @@ import { Radio, RadioGroup } from '@headlessui/react';
 import "react-responsive-carousel/lib/styles/carousel.min.css";
 import { Carousel } from 'react-responsive-carousel';
 import Link from 'next/link';
+import { navigate } from '../pages/nueva/actions';
+
+
 
 interface Point {
     x: number;
@@ -18,6 +21,9 @@ interface Point {
 function roundToTolerance(value: number, tolerance: number): number {
     return Math.round(value / tolerance) * tolerance;
 }
+
+
+
 
 function getMostFrequentPoints(data: Point[], tolerance: number = 5): (Point & { count: number })[] {
     const counts: Record<string, Point & { count: number }> = {};
@@ -100,6 +106,9 @@ export default function Page() {
     const [elementsWithPoints, setElementsWithPoints] = useState<{ id: string, points: Point[] }[]>([]);
     const [showHighlightedPage, setShowHighlightedPage] = useState(false);
     const [showMatchingElements, setShowMatchingElements] = useState(false); // Estado para controlar la visibilidad del recuadro azul
+    
+    
+    
 
     useEffect(() => {
         const fetchData = async () => {
@@ -177,6 +186,7 @@ export default function Page() {
         console.log('Elementos guardados en localStorage:', elementsData);
         console.log('ElementsWithPoints guardado en localStorage:', elementsWithPoints);
     }
+    
 
     if (isLoading) {
         return <div id="loading">Loading...</div>;
@@ -431,9 +441,10 @@ export default function Page() {
                         Ver Elementos Resaltados
                     </button>
 
-                    <button onClick={handleClickEsconder} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
+                    <button onClick={() => navigate("../../pages/nueva")} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
                         Generar Sugerencia
                     </button>
+
                 </main>
             ) : (
                 <main className="flex flex-col items-center justify-center p-4">
