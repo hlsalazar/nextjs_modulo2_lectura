@@ -419,7 +419,7 @@ export default function Page() {
                     </div>
 
                     <div id="matching-elements" style={{ display: 'none' }} className="bg-blue-500 text-white p-2 mt-2 w-full">
-                        <h2 className="text-sm font-bold mb-2">Elementos con puntos coincidentes:</h2>
+                        <h2 className="text-sm font-bold mb-2"> Elementos con puntos coincidentes:</h2>
                         {elementsWithPoints.length > 0 ? (
                             elementsWithPoints.map(element => (
                                 <div key={element.id} className="mb-1">
