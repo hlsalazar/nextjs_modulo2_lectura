@@ -102,6 +102,11 @@ export default function Page() {
     const [showHighlightedPage, setShowHighlightedPage] = useState(false);
     const [showMatchingElements, setShowMatchingElements] = useState(false); // Estado para controlar la visibilidad del recuadro azul
 
+    // Estados para calibración y recolección de puntos de mirada
+    const [gazeDataArray, setGazeDataArray] = useState<Point[]>([]);
+    const [collecting, setCollecting] = useState(false);
+    const [calibrationComplete, setCalibrationComplete] = useState(false);
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -141,22 +146,86 @@ export default function Page() {
         }
     }, [isLoading, data]);
 
+    // Funciones para manejo de la calibración y recolección de puntos de mirada
+    useEffect(() => {
+        // Agregar los scripts necesarios de GazeCloud
+        const script1 = document.createElement('script');
+        script1.src = 'https://api.gazerecorder.com/GazeCloudAPI.js';
+        script1.async = true;
+        document.body.appendChild(script1);
+
+        const script2 = document.createElement('script');
+        script2.src = 'https://app.gazerecorder.com/GazeRecorderAPI.js';
+        script2.async = true;
+        document.body.appendChild(script2);
+
+        const script3 = document.createElement('script');
+        script3.src = 'https://app.gazerecorder.com/GazePlayer.js';
+        script3.async = true;
+        document.body.appendChild(script3);
+
+        return () => {
+            document.body.removeChild(script1);
+            document.body.removeChild(script2);
+            document.body.removeChild(script3);
+        };
+    }, []);
+
+    const iniciarCalibracion = () => {
+        if (window.GazeCloudAPI) {
+            window.GazeCloudAPI.OnCalibrationComplete = function () {
+                console.log('Calibración completa');
+                setCalibrationComplete(true);
+            };
+            window.GazeCloudAPI.OnCamDenied = function () { console.log('No se puede obtener acceso a la cámara'); }
+            window.GazeCloudAPI.OnError = function (msg) { console.log('ERROR: ' + msg); }
+            window.GazeCloudAPI.UseClickRecalibration = true;
+            window.GazeCloudAPI.StartEyeTracking();
+        } else {
+            console.log('GazeCloudAPI no está disponible.');
+        }
+    };
+
+    const iniciarRecoleccion = () => {
+        setCollecting(true);
+        if (window.GazeCloudAPI) {
+            window.GazeCloudAPI.OnResult = function (GazeData) {
+                if (collecting) {
+                    let x = GazeData.docX;
+                    let y = GazeData.docY;
+
+                    const margin = 50; // Aumentar el área visible
+                    const width = window.innerWidth - margin;
+                    const height = window.innerHeight - margin;
+                    if (x < margin) x = margin;
+                    if (y < margin) y = margin;
+                    if (x > width) x = width;
+                    if (y > height) y = height;
+
+                    setGazeDataArray(prevArray => [...prevArray, { x, y }]);
+                }
+            };
+        } else {
+            console.log('GazeCloudAPI no está disponible.');
+        }
+    };
+
     const handleClick = () => {
         setShowHighlightedPage(true);
-    }
+    };
 
     const handleClickEsconder = () => {
         setShowHighlightedPage(false);
         saveElementsToLocalStorage();
-    }
+    };
 
     const handleShowMatchingElements = () => {
         setShowMatchingElements(true);
-    }
+    };
 
     const handleHideMatchingElements = () => {
         setShowMatchingElements(false);
-    }
+    };
 
     const saveElementsToLocalStorage = () => {
         const elements = document.querySelectorAll<HTMLElement>(
@@ -177,13 +246,13 @@ export default function Page() {
         localStorage.setItem('previousDivs', JSON.stringify(elementsData));
         console.log('Elementos guardados en localStorage:', elementsData);
         console.log('ElementsWithPoints guardado en localStorage:', elementsWithPoints);
-    }
+    };
 
     const handleGenerateSuggestion = () => {
         saveElementsToLocalStorage();
         console.log('Elementos con puntos coincidentes guardados en localStorage');
         navigate("/pages/nueva");
-    }
+    };
 
     if (isLoading) {
         return <div id="loading">Loading...</div>;
@@ -386,6 +455,7 @@ export default function Page() {
                                             <div id="description-content" className="space-y-1">
                                                 <p id="description-text" className="text-xs text-gray-900 border border-red-500 p-1">{product.description}</p>
                                             </div>
+
                                         </div>
 
                                         <div id="highlights-container" className="mt-2">
@@ -442,6 +512,45 @@ export default function Page() {
                         Generar Sugerencia
                     </button>
 
+                    {/* Botones para calibración y recolección de puntos de mirada */}
+                    <div id="controls" className="fixed bottom-4 flex gap-4">
+                        <button
+                            id="calibrationButton"
+                            onClick={iniciarCalibracion}
+                            className="rounded-md bg-red-500 px-4 py-2 text-white"
+                            disabled={calibrationComplete}
+                        >
+                            Iniciar Calibración
+                        </button>
+                        <button
+                            id="collectButton"
+                            onClick={iniciarRecoleccion}
+                            className="rounded-md bg-green-500 px-4 py-2 text-white"
+                            disabled={!calibrationComplete}
+                        >
+                            Recolectar Puntos
+                        </button>
+                    </div>
+
+                    {/* Contenedor para mostrar los puntos de mirada */}
+                    <div id="gazePoints" className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden border-2 border-lightblue">
+                        {gazeDataArray.map((point, index) => (
+                            <div
+                                key={index}
+                                className="gazePoint"
+                                style={{
+                                    position: 'absolute',
+                                    left: `${point.x}px`,
+                                    top: `${point.y}px`,
+                                    width: '10px',
+                                    height: '10px',
+                                    backgroundColor: 'red',
+                                    borderRadius: '50%',
+                                    transform: 'translate(-50%, -50%)'
+                                }}
+                            ></div>
+                        ))}
+                    </div>
                 </main>
             ) : (
                 <main className="flex flex-col items-center justify-center p-4">
