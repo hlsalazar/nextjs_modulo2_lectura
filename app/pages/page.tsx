@@ -255,6 +255,11 @@ export default function Page() {
         });
 
         localStorage.setItem('previousDivs', JSON.stringify(elementsData));
+
+        const content = document.querySelectorAll('#image-gallery, #product-details, #product-description');
+        const contentArray = Array.from(content).map((element) => element.outerHTML);
+        localStorage.setItem('pageContent', JSON.stringify(contentArray));
+
         console.log('Elementos guardados en localStorage:', elementsData);
         console.log('ElementsWithPoints guardado en localStorage:', elementsWithPoints);
     };
