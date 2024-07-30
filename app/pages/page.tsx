@@ -254,6 +254,25 @@ export default function Page() {
         navigate("/pages/nueva");
     };
 
+    const mostrarArrayPuntos = () => {
+        console.log(gazeDataArray);
+        const elements = document.querySelectorAll<HTMLElement>("[id^='image'], #product-name, #product-price, #reviews-link, #color-label, [id^='color-span-'], #size-label, #size-guide, [id^='size-span-'], #add-to-bag-button, #description-text, #highlights-list, [id^='highlight-span-'], #details-text");
+
+        const matchingElements: string[] = [];
+        elements.forEach(element => {
+            const rect = element.getBoundingClientRect();
+            const isMatch = gazeDataArray.some(point => (
+                point.x >= rect.left && point.x <= rect.right &&
+                point.y >= rect.top && point.y <= rect.bottom
+            ));
+            if (isMatch) {
+                matchingElements.push(element.id);
+            }
+        });
+
+        console.log("Elementos coincidentes:", matchingElements);
+    }
+
     if (isLoading) {
         return <div id="loading">Loading...</div>;
     }
@@ -529,6 +548,13 @@ export default function Page() {
                             disabled={!calibrationComplete}
                         >
                             Recolectar Puntos
+                        </button>
+                        <button
+                            id="showPointsButton"
+                            onClick={mostrarArrayPuntos}
+                            className="rounded-md bg-yellow-500 px-4 py-2 text-white"
+                        >
+                            Mostrar Puntos
                         </button>
                     </div>
 
