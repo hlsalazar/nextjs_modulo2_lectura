@@ -275,8 +275,8 @@ export default function Page() {
         localStorage.setItem('rankedElements', JSON.stringify(rankedElements));
         console.log('Elementos ordenados por puntos coincidentes:', rankedElements);
 
-        navigate("/prueba");
-        console.log('Navegación a /prueba');
+        navigate("/nueva");
+        console.log('Navegación a /nueva');
     };
 
     const mostrarArrayPuntos = () => {
