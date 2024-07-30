@@ -18,7 +18,7 @@ const InformePage: React.FC = () => {
 
   useEffect(() => {
     const storedGeneratedGazeData = localStorage.getItem('gazeData');
-    const storedPageGeneratedGazeData = localStorage.getItem('pageGeneratedGazeData');
+    const storedPageGeneratedGazeData = localStorage.getItem('gazeDataGenerado');
 
     if (storedGeneratedGazeData) {
       setGeneratedGazeData(JSON.parse(storedGeneratedGazeData));

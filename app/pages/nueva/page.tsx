@@ -14,6 +14,8 @@ const NuevaPage: React.FC = () => {
   const [rankedElementsFromStorage, setRankedElementsFromStorage] = useState<any[]>([]);
   const [showMainContent, setShowMainContent] = useState(false); // Estado para alternar el contenido
   const [gazeDataArray, setGazeDataArray] = useState<{ x: number; y: number }[]>([]);
+  const [variable, setVariable] = useState<{ x: number; y: number }[]>([]);
+
 
   const [showGazePoints, setShowGazePoints] = useState(true);
 
@@ -124,7 +126,7 @@ const NuevaPage: React.FC = () => {
           if (x > width) x = width;
           if (y > height) y = height;
 
-          setGazeDataArray(prevArray => [...prevArray, { x, y }]);
+          setVariable(prevArray => [...prevArray, { x, y }]);
         }
       };
     } else {
@@ -143,7 +145,16 @@ const NuevaPage: React.FC = () => {
     console.log('Puntos de página generada:', gazeDataArray);
   };
 
+
+  const handleGuardarGenerado = () => {
+    localStorage.setItem('gazeData', JSON.stringify(gazeDataArray));
+  };
+
   const handleNavigateToInforme = () => {
+    localStorage.setItem('gazeDataGenerado', JSON.stringify(variable));
+    localStorage.setItem('gazeData', JSON.stringify(gazeDataArray));
+
+
     const generatedGazeData = localStorage.getItem('gazeData');
     const pageGeneratedGazeData = localStorage.getItem('pageGeneratedGazeData');
     /*
@@ -223,7 +234,7 @@ const NuevaPage: React.FC = () => {
       {/* Contenedor para mostrar los puntos de mirada */}
       {showGazePoints && (
       <div id="gazePoints" className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
-        {gazeDataArray.map((point, index) => (
+        {variable.map((point, index) => (
           <div
             key={index}
             className="gazePoint"
