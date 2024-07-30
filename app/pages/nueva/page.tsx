@@ -6,18 +6,26 @@ import useGazeData from '../../hooks/useGazeData';
 import Link from 'next/link';
 
 const CombinedPage: React.FC = () => {
-  const { rankedElements } = useGazeData();
   const [content, setContent] = useState<string[]>([]);
   const [matchingElementIds, setMatchingElementIds] = useState<string[]>([]);
+  const [rankedElementsFromStorage, setRankedElementsFromStorage] = useState<any[]>([]);
 
   useEffect(() => {
     const storedContent = localStorage.getItem('pageContent');
     const storedMatchingElementIds = localStorage.getItem('matchingElementIds');
+    const storedRankedElements = localStorage.getItem('rankedElements');
+
     if (storedContent) {
       setContent(JSON.parse(storedContent));
+      console.log('Contenido de la página cargado desde localStorage');
     }
     if (storedMatchingElementIds) {
       setMatchingElementIds(JSON.parse(storedMatchingElementIds));
+      console.log('IDs de elementos coincidentes cargados desde localStorage');
+    }
+    if (storedRankedElements) {
+      setRankedElementsFromStorage(JSON.parse(storedRankedElements));
+      console.log('Elementos ordenados por puntos coincidentes cargados desde localStorage:', JSON.parse(storedRankedElements));
     }
   }, []);
 
@@ -48,7 +56,7 @@ const CombinedPage: React.FC = () => {
         </nav>
       </header>
       <main style={styles.mainContent}>
-        <ExampleComponent rankedElements={rankedElements} />
+        <ExampleComponent rankedElements={rankedElementsFromStorage} />
         <Link href="/highlighted-elements" legacyBehavior>
           <a className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
             Ir a página de elementos resaltados
