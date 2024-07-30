@@ -260,6 +260,21 @@ export default function Page() {
     };
 
     const handleGenerateSuggestion = () => {
+
+        saveElementsToLocalStorage();
+        console.log('Elementos con puntos coincidentes guardados en localStorage');
+
+        const rankedElements = elementsWithPoints
+            .map(element => ({
+                id: element.id,
+                pointsCount: element.points.length,
+                points: element.points,
+            }))
+            .sort((a, b) => b.pointsCount - a.pointsCount);
+
+        localStorage.setItem('rankedElements', JSON.stringify(rankedElements));
+        console.log('Elementos ordenados por puntos coincidentes:', rankedElements);
+
         localStorage.setItem('gazeData', JSON.stringify(gazeDataArray));
         console.log('Puntos de mirada guardados en localStorage:', gazeDataArray);
         router.push('/pages/nueva');

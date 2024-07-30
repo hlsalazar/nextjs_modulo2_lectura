@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import ExampleComponent from '../../components/ExampleComponent';
-import useGazeData from '../../hooks/useGazeData';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const NuevaPage: React.FC = () => {
   const [content, setContent] = useState<string[]>([]);
@@ -14,6 +14,8 @@ const NuevaPage: React.FC = () => {
 
   const [collecting, setCollecting] = useState(false);
   const [calibrationComplete, setCalibrationComplete] = useState(false);
+
+  const router = useRouter();
 
   useEffect(() => {
     const storedContent = localStorage.getItem('pageContent');
@@ -130,8 +132,34 @@ const NuevaPage: React.FC = () => {
     console.log('Puntos de página generada:', gazeDataArray);
   };
 
+  const handleNavigateToInforme = () => {
+    const generatedGazeData = localStorage.getItem('gazeData');
+    const pageGeneratedGazeData = JSON.stringify(gazeDataArray);
+
+    if (!generatedGazeData || JSON.parse(generatedGazeData).length === 0 || gazeDataArray.length === 0) {
+      alert('Realice el seguimiento de mirada');
+      return;
+    }
+
+    const params = new URLSearchParams({
+      generatedGazeData: generatedGazeData || '',
+      pageGeneratedGazeData: pageGeneratedGazeData,
+    }).toString();
+
+    router.push(`/informe?${params}`);
+  };
+
   return (
     <div style={styles.pageContainer}>
+      <div className="absolute top-4 right-4">
+        <button 
+          onClick={handleNavigateToInforme}
+          className="inline-block rounded-md bg-green-500 px-4 py-2 text-white hover:bg-green-600"
+        >
+          Ir a Informe
+        </button>
+      </div>
+
       <button 
         onClick={toggleContent} 
         className="mb-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
