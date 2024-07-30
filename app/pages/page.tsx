@@ -275,7 +275,7 @@ export default function Page() {
         localStorage.setItem('rankedElements', JSON.stringify(rankedElements));
         console.log('Elementos ordenados por puntos coincidentes:', rankedElements);
 
-        navigate("/nueva");
+        navigate("/pages/nueva");
         console.log('Navegación a /nueva');
     };
 
