@@ -4,6 +4,9 @@ import React, { useEffect, useState } from 'react';
 import ExampleComponent from '../../components/ExampleComponent';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import "react-responsive-carousel/lib/styles/carousel.min.css";
+import { Carousel } from 'react-responsive-carousel';
+
 
 const NuevaPage: React.FC = () => {
   const [content, setContent] = useState<string[]>([]);
@@ -134,19 +137,16 @@ const NuevaPage: React.FC = () => {
 
   const handleNavigateToInforme = () => {
     const generatedGazeData = localStorage.getItem('gazeData');
-    const pageGeneratedGazeData = JSON.stringify(gazeDataArray);
-
-    if (!generatedGazeData || JSON.parse(generatedGazeData).length === 0 || gazeDataArray.length === 0) {
+    const pageGeneratedGazeData = localStorage.getItem('pageGeneratedGazeData');
+    
+    if (!generatedGazeData || JSON.parse(generatedGazeData).length === 0 || !pageGeneratedGazeData || JSON.parse(pageGeneratedGazeData).length === 0) {
       alert('Realice el seguimiento de mirada');
       return;
     }
 
-    const params = new URLSearchParams({
-      generatedGazeData: generatedGazeData || '',
-      pageGeneratedGazeData: pageGeneratedGazeData,
-    }).toString();
+    router.push(`/pages/nueva/informe`);
 
-    router.push(`/informe?${params}`);
+    //router.push(`/informe?${params}`);
   };
 
   return (
@@ -164,7 +164,7 @@ const NuevaPage: React.FC = () => {
         onClick={toggleContent} 
         className="mb-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
       >
-        Toggle Content
+        Elementos mirados
       </button>
 
       {showMainContent ? (
@@ -178,7 +178,7 @@ const NuevaPage: React.FC = () => {
         </main>
       ) : (
         <section className="p-4">
-          <h1 className="text-2xl font-bold mb-4">Contenido Transferido</h1>
+          <h1 className="text-2xl font-bold mb-4">Contenido Generado</h1>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {content.map((html, index) => (
               <div key={index} dangerouslySetInnerHTML={{ __html: processContent(html) }} className="p-4 border rounded shadow-md"></div>
@@ -203,13 +203,13 @@ const NuevaPage: React.FC = () => {
         >
           Recolectar Puntos
         </button>
-        <button
+        {/*<button
           onClick={finalizarRecoleccion}
           className="rounded-md bg-yellow-500 px-4 py-2 text-white"
           disabled={!collecting}
         >
           Finalizar Recolección
-        </button>
+        </button>*/}
       </div>
 
       {/* Contenedor para mostrar los puntos de mirada */}

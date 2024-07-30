@@ -303,18 +303,18 @@ export default function Page() {
 
         console.log("Elementos coincidentes:", matchingElements);
     }
-
+/*
     if (isLoading) {
         return <div id="loading">Loading...</div>;
     }
-
+*/
     return (
         <div>
             {!showHighlightedPage ? (
                 <main id="main-content" className="flex h-screen items-center justify-center p-2">
-                    <h1 id="page-title" className={`${lusitana.className} mb-2 text-lg`}>Página de prueba</h1>
+                    <h1 id="page-title" className={`${lusitana.className} mb-2 text-lg`}></h1>
                     <MousePosition />
-                    <GazeEventChecker gazeEvents={data} />
+                    {/*<GazeEventChecker gazeEvents={data} />*/}
 
                     <div className="flex w-full h-full max-w-screen-xl">
                         <div id="image-gallery" className="flex-1 h-full p-2">
@@ -578,13 +578,13 @@ export default function Page() {
                         >
                             Recolectar Puntos
                         </button>
-                        <button
+                        {/*<button
                             id="showPointsButton"
                             onClick={mostrarArrayPuntos}
                             className="rounded-md bg-yellow-500 px-4 py-2 text-white"
                         >
                             Mostrar Puntos
-                        </button>
+                        </button>*/}
                     </div>
 
                     {/* Contenedor para mostrar los puntos de mirada */}
