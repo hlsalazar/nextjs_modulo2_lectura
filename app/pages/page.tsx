@@ -102,6 +102,8 @@ export default function Page() {
     const [showHighlightedPage, setShowHighlightedPage] = useState(false);
     const [showMatchingElements, setShowMatchingElements] = useState(false); // Estado para controlar la visibilidad del recuadro azul
 
+    const [showGazePoints, setShowGazePoints] = useState(true);
+
     // Estados para calibración y recolección de puntos de mirada
     const [gazeDataArray, setGazeDataArray] = useState<Point[]>([]);
     const [collecting, setCollecting] = useState(false);
@@ -303,6 +305,21 @@ export default function Page() {
 
         console.log("Elementos coincidentes:", matchingElements);
     }
+
+
+    const toggleGazePoints = () => {
+        setShowGazePoints(prevState => !prevState);
+    };
+
+    const finalizarRecoleccion = () => {
+        setCollecting(false);
+        setShowGazePoints(false);  // Ocultar los puntos
+        if (window.GazeCloudAPI) {
+            window.GazeCloudAPI.StopEyeTracking();
+        }
+        console.log('Recolección de puntos finalizada');
+        console.log('Puntos de página generada:', gazeDataArray);
+    };
 /*
     if (isLoading) {
         return <div id="loading">Loading...</div>;
@@ -578,16 +595,17 @@ export default function Page() {
                         >
                             Recolectar Puntos
                         </button>
-                        {/*<button
+                        <button
                             id="showPointsButton"
-                            onClick={mostrarArrayPuntos}
+                            onClick={toggleGazePoints}
                             className="rounded-md bg-yellow-500 px-4 py-2 text-white"
                         >
-                            Mostrar Puntos
-                        </button>*/}
+                            O
+                        </button>
                     </div>
 
                     {/* Contenedor para mostrar los puntos de mirada */}
+                    {showGazePoints && (
                     <div id="gazePoints" className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden border-2 border-lightblue">
                         {gazeDataArray.map((point, index) => (
                             <div
@@ -606,6 +624,7 @@ export default function Page() {
                             ></div>
                         ))}
                     </div>
+                    )}
                 </main>
             ) : (
                 <main className="flex flex-col items-center justify-center p-4">

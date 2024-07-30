@@ -15,10 +15,16 @@ const NuevaPage: React.FC = () => {
   const [showMainContent, setShowMainContent] = useState(false); // Estado para alternar el contenido
   const [gazeDataArray, setGazeDataArray] = useState<{ x: number; y: number }[]>([]);
 
+  const [showGazePoints, setShowGazePoints] = useState(true);
+
   const [collecting, setCollecting] = useState(false);
   const [calibrationComplete, setCalibrationComplete] = useState(false);
 
   const router = useRouter();
+
+  const toggleGazePoints = () => {
+    setShowGazePoints(prevState => !prevState);
+};
 
   useEffect(() => {
     const storedContent = localStorage.getItem('pageContent');
@@ -128,6 +134,8 @@ const NuevaPage: React.FC = () => {
 
   const finalizarRecoleccion = () => {
     setCollecting(false);
+    setShowGazePoints(false);  // Ocultar los puntos
+
     if (window.GazeCloudAPI) {
       window.GazeCloudAPI.StopEyeTracking();
     }
@@ -138,12 +146,12 @@ const NuevaPage: React.FC = () => {
   const handleNavigateToInforme = () => {
     const generatedGazeData = localStorage.getItem('gazeData');
     const pageGeneratedGazeData = localStorage.getItem('pageGeneratedGazeData');
-    
+    /*
     if (!generatedGazeData || JSON.parse(generatedGazeData).length === 0 || !pageGeneratedGazeData || JSON.parse(pageGeneratedGazeData).length === 0) {
       alert('Realice el seguimiento de mirada');
       return;
     }
-
+*/
     router.push(`/pages/nueva/informe`);
 
     //router.push(`/informe?${params}`);
@@ -203,16 +211,17 @@ const NuevaPage: React.FC = () => {
         >
           Recolectar Puntos
         </button>
-        {/*<button
-          onClick={finalizarRecoleccion}
+        <button
+          onClick={toggleGazePoints}
           className="rounded-md bg-yellow-500 px-4 py-2 text-white"
-          disabled={!collecting}
+          //disabled={!collecting}
         >
-          Finalizar Recolección
-        </button>*/}
+          O
+        </button>
       </div>
 
       {/* Contenedor para mostrar los puntos de mirada */}
+      {showGazePoints && (
       <div id="gazePoints" className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
         {gazeDataArray.map((point, index) => (
           <div
@@ -231,7 +240,9 @@ const NuevaPage: React.FC = () => {
           ></div>
         ))}
       </div>
+      )}
     </div>
+    
   );
 };
 
