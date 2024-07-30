@@ -1,13 +1,20 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import ExampleComponent from '../../components/ExampleComponent';
 import useGazeData from '../../hooks/useGazeData';
 import Link from 'next/link';
 
-const NewLayoutPage: React.FC = () => {
+const CombinedPage: React.FC = () => {
   const { rankedElements } = useGazeData();
+  const [content, setContent] = useState<string[]>([]);
 
+  useEffect(() => {
+    const storedContent = localStorage.getItem('pageContent');
+    if (storedContent) {
+      setContent(JSON.parse(storedContent));
+    }
+  }, []);
   console.log("Ranked elements:", rankedElements);
 
   return (
@@ -30,6 +37,14 @@ const NewLayoutPage: React.FC = () => {
           </a>
         </Link>
       </main>
+      <section className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Contenido Transferido</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {content.map((html, index) => (
+            <div key={index} dangerouslySetInnerHTML={{ __html: html }} className="p-4 border rounded shadow-md"></div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 };
@@ -57,4 +72,4 @@ const styles = {
   },
 };
 
-export default NewLayoutPage;
+export default CombinedPage;

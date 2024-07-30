@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { lusitana } from "../ui/fonts";
+import { useRouter } from 'next/navigation'; //
 import GazeEventChecker from '../components/GazeEventChecker';
 import MousePosition from '../components/MousePosition';
 import { StarIcon } from '@heroicons/react/20/solid';
@@ -10,6 +11,9 @@ import "react-responsive-carousel/lib/styles/carousel.min.css";
 import { Carousel } from 'react-responsive-carousel';
 import Link from 'next/link';
 import { navigate } from '../pages/nueva/actions';
+
+
+
 
 interface Point {
     x: number;
@@ -106,6 +110,8 @@ export default function Page() {
     const [gazeDataArray, setGazeDataArray] = useState<Point[]>([]);
     const [collecting, setCollecting] = useState(false);
     const [calibrationComplete, setCalibrationComplete] = useState(false);
+
+    const router = useRouter();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -208,6 +214,13 @@ export default function Page() {
         } else {
             console.log('GazeCloudAPI no está disponible.');
         }
+    };
+
+    const handleSaveAndNavigate = () => {
+        const content = document.querySelectorAll('#image-gallery, #product-details, #product-description');
+        const contentArray = Array.from(content).map((element) => element.outerHTML);
+        localStorage.setItem('pageContent', JSON.stringify(contentArray));
+        router.push('/pages/nueva'); // Ajusta esta ruta según tu estructura de rutas
     };
 
     const handleClick = () => {
@@ -527,7 +540,7 @@ export default function Page() {
                         Ver Elementos Resaltados
                     </button>
 
-                    <button onClick={handleGenerateSuggestion} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
+                    <button onClick={handleSaveAndNavigate} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
                         Generar Sugerencia
                     </button>
 
