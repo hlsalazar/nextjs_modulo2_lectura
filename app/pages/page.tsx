@@ -10,7 +10,6 @@ import { Radio, RadioGroup } from '@headlessui/react';
 import "react-responsive-carousel/lib/styles/carousel.min.css";
 import { Carousel } from 'react-responsive-carousel';
 import Link from 'next/link';
-import { navigate } from '../pages/nueva/actions';
 
 interface Point {
     x: number;
@@ -261,22 +260,9 @@ export default function Page() {
     };
 
     const handleGenerateSuggestion = () => {
-        saveElementsToLocalStorage();
-        console.log('Elementos con puntos coincidentes guardados en localStorage');
-
-        const rankedElements = elementsWithPoints
-            .map(element => ({
-                id: element.id,
-                pointsCount: element.points.length,
-                points: element.points,
-            }))
-            .sort((a, b) => b.pointsCount - a.pointsCount);
-
-        localStorage.setItem('rankedElements', JSON.stringify(rankedElements));
-        console.log('Elementos ordenados por puntos coincidentes:', rankedElements);
-
-        navigate("/pages/nueva");
-        console.log('Navegación a /nueva');
+        localStorage.setItem('gazeData', JSON.stringify(gazeDataArray));
+        console.log('Puntos de mirada guardados en localStorage:', gazeDataArray);
+        router.push('/pages/nueva');
     };
 
     const mostrarArrayPuntos = () => {
@@ -548,9 +534,7 @@ export default function Page() {
                     </div>
 
                     {/* Botón adicional */}
-                    <button onClick={handleClick} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
-                        Ver Elementos Resaltados
-                    </button>
+
 
                     <button onClick={handleGenerateSuggestion} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
                         Generar Sugerencia

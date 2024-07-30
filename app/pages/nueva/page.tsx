@@ -5,14 +5,13 @@ import ExampleComponent from '../../components/ExampleComponent';
 import useGazeData from '../../hooks/useGazeData';
 import Link from 'next/link';
 
-const CombinedPage: React.FC = () => {
+const NuevaPage: React.FC = () => {
   const [content, setContent] = useState<string[]>([]);
   const [matchingElementIds, setMatchingElementIds] = useState<string[]>([]);
   const [rankedElementsFromStorage, setRankedElementsFromStorage] = useState<any[]>([]);
   const [showMainContent, setShowMainContent] = useState(false); // Estado para alternar el contenido
-
-  // Estados para calibración y recolección de puntos de mirada
   const [gazeDataArray, setGazeDataArray] = useState<{ x: number; y: number }[]>([]);
+
   const [collecting, setCollecting] = useState(false);
   const [calibrationComplete, setCalibrationComplete] = useState(false);
 
@@ -20,6 +19,7 @@ const CombinedPage: React.FC = () => {
     const storedContent = localStorage.getItem('pageContent');
     const storedMatchingElementIds = localStorage.getItem('matchingElementIds');
     const storedRankedElements = localStorage.getItem('rankedElements');
+    const storedGazeData = localStorage.getItem('gazeData');
 
     if (storedContent) {
       setContent(JSON.parse(storedContent));
@@ -32,6 +32,10 @@ const CombinedPage: React.FC = () => {
     if (storedRankedElements) {
       setRankedElementsFromStorage(JSON.parse(storedRankedElements));
       console.log('Elementos ordenados por puntos coincidentes cargados desde localStorage:', JSON.parse(storedRankedElements));
+    }
+    if (storedGazeData) {
+      setGazeDataArray(JSON.parse(storedGazeData));
+      console.log('Puntos de mirada recibidos:', JSON.parse(storedGazeData));
     }
   }, []);
 
@@ -123,6 +127,7 @@ const CombinedPage: React.FC = () => {
       window.GazeCloudAPI.StopEyeTracking();
     }
     console.log('Recolección de puntos finalizada');
+    console.log('Puntos de página generada:', gazeDataArray);
   };
 
   return (
@@ -225,4 +230,4 @@ const styles = {
   },
 };
 
-export default CombinedPage;
+export default NuevaPage;
