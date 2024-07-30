@@ -12,9 +12,6 @@ import { Carousel } from 'react-responsive-carousel';
 import Link from 'next/link';
 import { navigate } from '../pages/nueva/actions';
 
-
-
-
 interface Point {
     x: number;
     y: number;
@@ -264,6 +261,24 @@ export default function Page() {
     const handleGenerateSuggestion = () => {
         saveElementsToLocalStorage();
         console.log('Elementos con puntos coincidentes guardados en localStorage');
+
+        // Guardar los IDs de los elementos coincidentes en localStorage
+        const elements = document.querySelectorAll<HTMLElement>(
+            "[id^='image'], #product-name, #product-price, #reviews-link, #color-label, [id^='color-span-'], #size-label, #size-guide, [id^='size-span-'], #add-to-bag-button, #description-text, #highlights-list, [id^='highlight-span-'], #details-text"
+        );
+        const matchingElementIds: string[] = [];
+        elements.forEach(element => {
+            const rect = element.getBoundingClientRect();
+            const isMatch = gazeDataArray.some(point => (
+                point.x >= rect.left && point.x <= rect.right &&
+                point.y >= rect.top && point.y <= rect.bottom
+            ));
+            if (isMatch) {
+                matchingElementIds.push(element.id);
+            }
+        });
+        localStorage.setItem('matchingElementIds', JSON.stringify(matchingElementIds));
+        
         navigate("/pages/nueva");
     };
 
@@ -540,7 +555,7 @@ export default function Page() {
                         Ver Elementos Resaltados
                     </button>
 
-                    <button onClick={handleSaveAndNavigate} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
+                    <button onClick={handleGenerateSuggestion} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
                         Generar Sugerencia
                     </button>
 

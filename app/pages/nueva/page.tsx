@@ -8,14 +8,32 @@ import Link from 'next/link';
 const CombinedPage: React.FC = () => {
   const { rankedElements } = useGazeData();
   const [content, setContent] = useState<string[]>([]);
+  const [matchingElementIds, setMatchingElementIds] = useState<string[]>([]);
 
   useEffect(() => {
     const storedContent = localStorage.getItem('pageContent');
+    const storedMatchingElementIds = localStorage.getItem('matchingElementIds');
     if (storedContent) {
       setContent(JSON.parse(storedContent));
     }
+    if (storedMatchingElementIds) {
+      setMatchingElementIds(JSON.parse(storedMatchingElementIds));
+    }
   }, []);
-  console.log("Ranked elements:", rankedElements);
+
+  const processContent = (html: string): string => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    matchingElementIds.forEach(id => {
+      const element = doc.getElementById(id);
+      if (element) {
+        element.style.border = '2px solid red';
+      }
+    });
+    
+    return doc.body.innerHTML;
+  };
 
   return (
     <div style={styles.pageContainer}>
@@ -41,7 +59,7 @@ const CombinedPage: React.FC = () => {
         <h1 className="text-2xl font-bold mb-4">Contenido Transferido</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {content.map((html, index) => (
-            <div key={index} dangerouslySetInnerHTML={{ __html: html }} className="p-4 border rounded shadow-md"></div>
+            <div key={index} dangerouslySetInnerHTML={{ __html: processContent(html) }} className="p-4 border rounded shadow-md"></div>
           ))}
         </div>
       </section>
