@@ -16,23 +16,17 @@ interface Point {
   y: number;
 }
 
-// Función para normalizar los puntos dentro de las dimensiones del contenedor
-const normalizePoints = (
-  points: Point[],
-  maxCanvasWidth: number,
-  maxCanvasHeight: number
-) => {
+// Función para normalizar los puntos dentro de las dimensiones dinámicas del contenedor
+const normalizePoints = (points: Point[], width: number, height: number) => {
   const maxX = Math.max(...points.map((p) => p.x), 1);
   const maxY = Math.max(...points.map((p) => p.y), 1);
-  const scaleFactor = Math.min(
-    maxCanvasWidth / maxX,
-    maxCanvasHeight / maxY
-  ); // Escalado uniforme para mantener proporciones
+  const scaleFactorX = width / maxX;
+  const scaleFactorY = height / maxY;
 
   return points.map((point) => ({
-    x: Math.floor(point.x * scaleFactor), // Escala proporcional en X
-    y: Math.floor(point.y * scaleFactor), // Escala proporcional en Y
-    value: 1, // Peso del punto
+    x: Math.floor(point.x * scaleFactorX),
+    y: Math.floor(point.y * scaleFactorY),
+    value: 1,
   }));
 };
 
@@ -69,42 +63,51 @@ const InformePage: React.FC = () => {
 
   // Crear el mapa de calor
   useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      heatmapContainerRef.current &&
-      generatedGazeData.length > 0
-    ) {
-      console.log("Inicializando mapa de calor con puntos:", generatedGazeData);
+    const renderHeatmap = () => {
+      if (
+        typeof window !== "undefined" &&
+        heatmapContainerRef.current &&
+        generatedGazeData.length > 0
+      ) {
+        const container = heatmapContainerRef.current;
 
-      const container = heatmapContainerRef.current;
+        // Obtener dimensiones dinámicas
+        const containerWidth = container.offsetWidth || 600; // Default si no hay dimensiones
+        const containerHeight = container.offsetHeight || 400;
 
-      // Normalizar los puntos dentro de las dimensiones limitadas del canvas
-      const normalizedPoints = normalizePoints(
-        generatedGazeData,
-        MAX_CANVAS_WIDTH,
-        MAX_CANVAS_HEIGHT
-      );
+        // Normalizar puntos
+        const normalizedPoints = normalizePoints(
+          generatedGazeData,
+          containerWidth,
+          containerHeight
+        );
 
-      console.log("Puntos normalizados:", normalizedPoints);
+        // Limpiar contenedor previo
+        container.innerHTML = "";
 
-      // Establecer dimensiones del contenedor para ajustarse al canvas
-      container.style.width = `${MAX_CANVAS_WIDTH}px`;
-      container.style.height = `${MAX_CANVAS_HEIGHT}px`;
+        // Crear mapa de calor
+        const heatmapInstance = h337.create({
+          container,
+          radius: 20, // Ajustar el radio de los puntos
+          maxOpacity: 0.8,
+          blur: 0.75,
+        });
 
-      const heatmapInstance = h337.create({
-        container,
-        radius: 15, // Reduce el radio si el mapa es demasiado grande
-        maxOpacity: 0.8, // Mantén una opacidad visible
-        minOpacity: 0, // Mantén una opacidad mínima
-        blur: 0.6, // Ajusta el suavizado si es necesario
-      });
+        heatmapInstance.setData({
+          min: 0,
+          max: 10,
+          data: normalizedPoints,
+        });
+      }
+    };
 
-      heatmapInstance.setData({
-        min: 0, // Valor mínimo para el mapa de calor
-        max: 10, // Máximo valor en la escala de calor
-        data: normalizedPoints,
-      });
-    }
+    // Redibujar mapa de calor en montaje y al cambiar el tamaño de la ventana
+    window.addEventListener("resize", renderHeatmap);
+    renderHeatmap();
+
+    return () => {
+      window.removeEventListener("resize", renderHeatmap);
+    };
   }, [generatedGazeData]);
 
   const scatterData = {
@@ -211,14 +214,15 @@ const InformePage: React.FC = () => {
           id="heatmap-container"
           ref={heatmapContainerRef}
           style={{
-            width: `${MAX_CANVAS_WIDTH}px`,
-            height: `${MAX_CANVAS_HEIGHT}px`,
+            width: "70%",
+            height: "50vh",
             position: "relative",
-            backgroundColor: "#fff", // Asegúrate de que el fondo sea blanco
-            border: "1px solid #ddd", // Añade un borde para mejor visibilidad
+            backgroundColor: "#fff",
+            border: "1px solid #ddd",
           }}
         ></div>
         <p style={styles.paragraph}>
+          <br></br>
           El mapa de calor es una representación visual que muestra las áreas
           de mayor atención e interacción en la página. Los colores cálidos,
           como el rojo y amarillo, indican zonas donde los usuarios han
