@@ -5,6 +5,9 @@ import { Chart, registerables } from "chart.js";
 import { Scatter } from "react-chartjs-2";
 import "chart.js/auto";
 import h337 from "heatmap.js"; // Importa heatmap.js
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "../../../../firebaseConfig"; // Ruta de tu archivo firebaseConfig
+
 
 Chart.register(...registerables);
 
@@ -19,20 +22,28 @@ const normalizePoints = (
   maxCanvasWidth: number,
   maxCanvasHeight: number
 ) => {
-  const scaleFactorX = maxCanvasWidth / Math.max(...points.map((p) => p.x), 1);
-  const scaleFactorY = maxCanvasHeight / Math.max(...points.map((p) => p.y), 1);
+  const maxX = Math.max(...points.map((p) => p.x), 1);
+  const maxY = Math.max(...points.map((p) => p.y), 1);
+  const scaleFactor = Math.min(
+    maxCanvasWidth / maxX,
+    maxCanvasHeight / maxY
+  ); // Escalado uniforme para mantener proporciones
 
   return points.map((point) => ({
-    x: Math.floor(point.x * scaleFactorX),
-    y: Math.floor(point.y * scaleFactorY),
+    x: Math.floor(point.x * scaleFactor), // Escala proporcional en X
+    y: Math.floor(point.y * scaleFactor), // Escala proporcional en Y
     value: 1, // Peso del punto
   }));
 };
 
+
+
 const InformePage: React.FC = () => {
   const heatmapContainerRef = useRef<HTMLDivElement | null>(null);
   const [generatedGazeData, setGeneratedGazeData] = useState<Point[]>([]);
-  const [pageGeneratedGazeData, setPageGeneratedGazeData] = useState<Point[]>([]);
+  const [pageGeneratedGazeData, setPageGeneratedGazeData] = useState<Point[]>(
+    []
+  );
 
   const MAX_CANVAS_WIDTH = 600; // Ajustar el ancho máximo del canvas
   const MAX_CANVAS_HEIGHT = 400; // Ajustar el alto máximo del canvas
@@ -132,6 +143,30 @@ const InformePage: React.FC = () => {
     },
   };
 
+  const saveReportToFirebase = async () => {
+    if (!generatedGazeData.length) {
+      alert("No hay datos de mirada generados para guardar.");
+      return;
+    }
+  
+    try {
+      const reportData = {
+        generatedGazeData,
+        pageGeneratedGazeData,
+        timestamp: new Date().toISOString(),
+      };
+  
+      const docRef = await addDoc(collection(db, "reports"), reportData);
+      console.log("Informe guardado con ID:", docRef.id);
+      alert("Informe guardado exitosamente en Firebase.");
+    } catch (error) {
+      console.error("Error al guardar el informe:", error);
+      alert("Hubo un error al guardar el informe. Por favor, intenta nuevamente.");
+    }
+  };
+  
+  
+
   return (
     <div style={styles.pageContainer}>
       <h1 style={styles.header}>
@@ -166,8 +201,7 @@ const InformePage: React.FC = () => {
         </div>
         <p style={styles.paragraph}>
           El gráfico de dispersión muestra los puntos de mirada recibidos en
-          rojo y los puntos generados en la página en azul. Esto nos permite
-          visualizar las áreas de alta y baja interacción.
+          rojo. Esto nos permite visualizar las áreas de alta y baja interacción.
         </p>
       </section>
 
@@ -184,6 +218,16 @@ const InformePage: React.FC = () => {
             border: "1px solid #ddd", // Añade un borde para mejor visibilidad
           }}
         ></div>
+        <p style={styles.paragraph}>
+          El mapa de calor es una representación visual que muestra las áreas
+          de mayor atención e interacción en la página. Los colores cálidos,
+          como el rojo y amarillo, indican zonas donde los usuarios han
+          enfocado más su mirada, mientras que los colores fríos, como el azul
+          y verde, representan menor atención. Esto nos permite identificar
+          patrones de navegación y evaluar si los elementos clave de la
+          interfaz, como botones, enlaces o contenidos principales, están
+          captando la atención esperada.
+        </p>
       </section>
 
       <section style={styles.section}>
@@ -195,6 +239,28 @@ const InformePage: React.FC = () => {
           se pueden crear interfaces más intuitivas y eficientes.
         </p>
       </section>
+
+      <section style={styles.section}>
+        <h2 style={styles.sectionTitle}>Guardar Informe</h2>
+        <button
+          style={{
+            padding: "10px 20px",
+            backgroundColor: "#007bff",
+            color: "#fff",
+            border: "none",
+            borderRadius: "5px",
+            cursor: "pointer",
+          }}
+          onClick={saveReportToFirebase}
+        >
+          Guardar Informe
+        </button>
+        <p style={styles.paragraph}>
+          Haz clic en el botón para guardar el informe en Firebase y compartirlo con
+          el analista UX.
+        </p>
+      </section>
+
     </div>
   );
 };
