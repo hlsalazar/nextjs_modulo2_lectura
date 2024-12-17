@@ -7,6 +7,9 @@ import "chart.js/auto";
 import h337 from "heatmap.js"; // Importa heatmap.js
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "../../../../firebaseConfig"; // Ruta de tu archivo firebaseConfig
+import { interpolateRgb } from "d3-interpolate"; // Necesitarás d3-interpolate para colores suaves
+import { TooltipItem } from "chart.js";
+
 
 
 Chart.register(...registerables);
@@ -30,14 +33,40 @@ const normalizePoints = (points: Point[], width: number, height: number) => {
   }));
 };
 
+// Función para contar las repeticiones de puntos
+const calculatePointIntensities = (points: Point[]) => {
+  const pointMap = new Map<string, number>();
+
+  points.forEach((point) => {
+    // Redondear X e Y para agrupar puntos cercanos
+    const roundedX = Math.round(point.x / 5) * 5; // Redondeo ajustado a múltiplos de 5
+    const roundedY = Math.round(point.y / 5) * 5;
+
+    const key = `${roundedX},${roundedY}`; // Clave única por coordenada redondeada
+    pointMap.set(key, (pointMap.get(key) || 0) + 1);
+  });
+
+  // Convertir el mapa en un arreglo de puntos con intensidad
+  return Array.from(pointMap.entries()).map(([key, intensity]) => {
+    const [x, y] = key.split(",").map(Number);
+    return { x, y, intensity }; // Devolver coordenadas e intensidad
+  });
+};
 
 
 const InformePage: React.FC = () => {
   const heatmapContainerRef = useRef<HTMLDivElement | null>(null);
   const [generatedGazeData, setGeneratedGazeData] = useState<Point[]>([]);
+  const colorScale = interpolateRgb("blue", "red"); // Degradado de azul a rojo
+
   const [pageGeneratedGazeData, setPageGeneratedGazeData] = useState<Point[]>(
     []
   );
+  const [processedGazeData, setProcessedGazeData] = useState<
+  { x: number; y: number; intensity: number }[]
+>([]);
+
+const [showPoints, setShowPoints] = useState(false); // Estado para mostrar/ocultar la lista de puntos
 
   const MAX_CANVAS_WIDTH = 600; // Ajustar el ancho máximo del canvas
   const MAX_CANVAS_HEIGHT = 400; // Ajustar el alto máximo del canvas
@@ -110,41 +139,107 @@ const InformePage: React.FC = () => {
     };
   }, [generatedGazeData]);
 
-  const scatterData = {
-    datasets: [
-      {
-        label: "Puntos de mirada recibidos",
-        data: generatedGazeData.map((point) => ({ x: point.x, y: point.y })),
-        backgroundColor: "rgba(255, 99, 132, 0.5)",
-        borderColor: "rgba(255, 99, 132, 1)",
-        pointRadius: 5,
-      },
-      {
-        label: "Puntos generados en la página",
-        data: pageGeneratedGazeData.map((point) => ({ x: point.x, y: point.y })),
-        backgroundColor: "rgba(54, 162, 235, 0.5)",
-        borderColor: "rgba(54, 162, 235, 1)",
-        pointRadius: 5,
-      },
-    ],
-  };
 
+  useEffect(() => {
+    if (generatedGazeData.length > 0) {
+      const updatedData = calculatePointIntensities(generatedGazeData);
+      setProcessedGazeData(updatedData);
+    }
+  }, [generatedGazeData]); // Se recalcula cuando generatedGazeData cambia
+
+
+
+  const scatterData = {
+  datasets: [
+    {
+      label: "Puntos de interacción",
+      data: processedGazeData.map((point) => ({
+        x: Math.round(point.x / 5) * 5, // Redondeo suave
+        y: Math.round(point.y / 5) * 5,
+        intensity: point.intensity,
+      })),
+      backgroundColor: processedGazeData.map((point) => {
+        if (point.intensity === 1) {
+          return "rgba(0, 0, 255, 0.3)"; // Azul claro para baja interacción
+        } else if (point.intensity <= 3) {
+          return "rgba(255, 165, 0, 0.6)"; // Naranja para media interacción
+        } else {
+          return "rgba(255, 0, 0, 0.8)"; // Rojo fuerte para alta interacción
+        }
+      }),
+      borderColor: "rgba(0, 0, 0, 0.1)", // Bordes sutiles
+      pointRadius: processedGazeData.map((point) =>
+        point.intensity === 1 ? 4 : Math.min(point.intensity * 2, 12)
+      ), // Tamaños dinámicos, más pequeños para intensidad 1
+      pointHoverRadius: 15, // Hover más grande
+      pointStyle: "circle",
+    },
+  ],
+};
+
+  
+  
   const scatterOptions = {
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: (tooltipItem: TooltipItem<"scatter">) => {
+            const dataPoint = tooltipItem.raw as { x: number; y: number; intensity: number };
+            const classification =
+              dataPoint.intensity > 5
+                ? "Alta Interacción 🔴"
+                : dataPoint.intensity > 2
+                ? "Media Interacción 🟠"
+                : "Baja Interacción 🔵";
+            return `📍 Coordenadas: X = ${dataPoint.x}, Y = ${dataPoint.y}
+  📊 Intensidad: ${dataPoint.intensity} (${classification})`;
+          },
+        },
+      },
+      legend: {
+        display: true,
+        position: "top",
+        labels: {
+          usePointStyle: true,
+          font: { size: 14 },
+          generateLabels: () => [
+            { text: "Alta Interacción (Rojo)", fillStyle: "rgba(255, 0, 0, 0.8)" },
+            { text: "Media Interacción (Naranja)", fillStyle: "rgba(255, 165, 0, 0.8)" },
+            { text: "Baja Interacción (Azul)", fillStyle: "rgba(0, 0, 255, 0.8)" },
+          ],
+        },
+      },
+    },
     scales: {
       x: {
         title: {
           display: true,
           text: "Posición X",
+          color: "#333",
+          font: { size: 16, weight: "bold" },
         },
+        grid: { color: "rgba(200, 200, 200, 0.1)" }, // Grid suave
       },
       y: {
         title: {
           display: true,
           text: "Posición Y",
+          color: "#333",
+          font: { size: 16, weight: "bold" },
         },
+        grid: { color: "rgba(200, 200, 200, 0.1)" },
       },
     },
+    animation: {
+      duration: 1500, // Animación suave
+      easing: "easeOutBounce",
+    },
   };
+  
+
+  
+  
+  
 
   const saveReportToFirebase = async () => {
     if (!generatedGazeData.length) {
@@ -188,13 +283,49 @@ const InformePage: React.FC = () => {
 
       <section style={styles.section}>
         <h2 style={styles.sectionTitle}>Puntos de Mirada Recibidos</h2>
-        <ul style={styles.list}>
-          {generatedGazeData.map((point, index) => (
-            <li key={index}>
-              x: {point.x}, y: {point.y}
-            </li>
-          ))}
-        </ul>
+        <button
+          onClick={() => setShowPoints(!showPoints)}
+          style={{
+            marginBottom: "10px",
+            padding: "8px 12px",
+            fontSize: "16px",
+            backgroundColor: "#007bff",
+            color: "#fff",
+            border: "none",
+            borderRadius: "5px",
+            cursor: "pointer",
+            transition: "background-color 0.3s ease",
+          }}
+        >
+          {showPoints ? "🔽 Contraer Puntos" : "🔼 Expandir Puntos"}
+        </button>
+
+        {/* Contenedor de puntos con lógica condicional */}
+        {showPoints && (
+          <div
+            style={{
+              maxHeight: "200px",
+              overflowY: "auto",
+              border: "1px solid #ddd",
+              borderRadius: "5px",
+              padding: "10px",
+              backgroundColor: "#f9f9f9",
+              boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            <ul style={{ paddingLeft: "20px" }}>
+              {generatedGazeData.map((point, index) => (
+                <li
+                  key={index}
+                  style={{ fontSize: "14px", color: "#555", marginBottom: "5px" }}
+                >
+                  X: {point.x}, Y: {point.y}
+                </li>
+              ))}
+            </ul>
+          </div>
+          )}
+
       </section>
 
       <section style={styles.section}>
@@ -203,8 +334,7 @@ const InformePage: React.FC = () => {
           <Scatter data={scatterData} options={scatterOptions} />
         </div>
         <p style={styles.paragraph}>
-          El gráfico de dispersión muestra los puntos de mirada recibidos en
-          rojo. Esto nos permite visualizar las áreas de alta y baja interacción.
+          El gráfico de dispersión presenta una representación visual detallada de los puntos de mirada registrados durante la interacción del usuario con la interfaz. Cada punto corresponde a una coordenada específica (X, Y) en la pantalla, y su color e intensidad varían en función de la cantidad de veces que dicha región ha sido visualizada.
         </p>
       </section>
 
