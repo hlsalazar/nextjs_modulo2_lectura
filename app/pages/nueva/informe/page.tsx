@@ -179,62 +179,65 @@ const [showPoints, setShowPoints] = useState(false); // Estado para mostrar/ocul
 
   
   
-  const scatterOptions = {
-    plugins: {
-      tooltip: {
-        callbacks: {
-          label: (tooltipItem: TooltipItem<"scatter">) => {
-            const dataPoint = tooltipItem.raw as { x: number; y: number; intensity: number };
-            const classification =
-              dataPoint.intensity > 5
-                ? "Alta Interacción 🔴"
-                : dataPoint.intensity > 2
-                ? "Media Interacción 🟠"
-                : "Baja Interacción 🔵";
-            return `📍 Coordenadas: X = ${dataPoint.x}, Y = ${dataPoint.y}
-  📊 Intensidad: ${dataPoint.intensity} (${classification})`;
-          },
+const scatterOptions = {
+  plugins: {
+    tooltip: {
+      callbacks: {
+        label: (tooltipItem: TooltipItem<"scatter">) => {
+          const dataPoint = tooltipItem.raw as { x: number; y: number; intensity: number };
+          const classification =
+            dataPoint.intensity > 5
+              ? "Alta Interacción 🔴"
+              : dataPoint.intensity > 2
+              ? "Media Interacción 🟠"
+              : "Baja Interacción 🔵";
+          return `📍 Coordenadas: X = ${dataPoint.x}, Y = ${dataPoint.y}
+📊 Intensidad: ${dataPoint.intensity} (${classification})`;
         },
       },
-      legend: {
+    },
+    legend: {
+      display: true,
+      position: "top",
+      labels: {
+        usePointStyle: true,
+        font: { size: 14 },
+        generateLabels: () => [
+          { text: "Alta Interacción (Rojo)", fillStyle: "rgba(255, 0, 0, 0.8)" },
+          { text: "Media Interacción (Naranja)", fillStyle: "rgba(255, 165, 0, 0.8)" },
+          { text: "Baja Interacción (Azul)", fillStyle: "rgba(0, 0, 255, 0.8)" },
+        ],
+      },
+    },
+  },
+  scales: {
+    x: {
+      title: {
         display: true,
-        position: "top",
-        labels: {
-          usePointStyle: true,
-          font: { size: 14 },
-          generateLabels: () => [
-            { text: "Alta Interacción (Rojo)", fillStyle: "rgba(255, 0, 0, 0.8)" },
-            { text: "Media Interacción (Naranja)", fillStyle: "rgba(255, 165, 0, 0.8)" },
-            { text: "Baja Interacción (Azul)", fillStyle: "rgba(0, 0, 255, 0.8)" },
-          ],
-        },
+        text: "Posición X",
+        color: "#333",
+        font: { size: 16, weight: "bold" },
       },
+      grid: { color: "rgba(200, 200, 200, 0.1)" },
     },
-    scales: {
-      x: {
-        title: {
-          display: true,
-          text: "Posición X",
-          color: "#333",
-          font: { size: 16, weight: "bold" },
-        },
-        grid: { color: "rgba(200, 200, 200, 0.1)" }, // Grid suave
+    y: {
+      title: {
+        display: true,
+        text: "Posición Y",
+        color: "#333",
+        font: { size: 16, weight: "bold" },
       },
-      y: {
-        title: {
-          display: true,
-          text: "Posición Y",
-          color: "#333",
-          font: { size: 16, weight: "bold" },
-        },
-        grid: { color: "rgba(200, 200, 200, 0.1)" },
-      },
+      grid: { color: "rgba(200, 200, 200, 0.1)" },
     },
-    animation: {
-      duration: 1500, // Animación suave
-      easing: "easeOutBounce",
-    },
-  };
+  },
+  animation: {
+    duration: 1500, // Duración válida
+    easing: "easeOutBounce", // Usa una opción válida (predefinida)
+  },
+} as const; // Asegura que TypeScript infiera correctamente los tipos
+
+
+
   
 
   
@@ -248,9 +251,14 @@ const [showPoints, setShowPoints] = useState(false); // Estado para mostrar/ocul
     }
   
     try {
+
+      // Recupera el tiempo de la tarea desde localStorage
+      const taskDuration = localStorage.getItem("taskDuration");
+      //Construye el objeto de datos
       const reportData = {
         generatedGazeData,
         pageGeneratedGazeData,
+        taskDuration: taskDuration ? Number(taskDuration) : 0, // Convierte a número si existe
         timestamp: new Date().toISOString(),
       };
   

@@ -108,6 +108,9 @@ export default function Page() {
     const [gazeDataArray, setGazeDataArray] = useState<Point[]>([]);
     const [collecting, setCollecting] = useState(false);
     const [calibrationComplete, setCalibrationComplete] = useState(false);
+    const [startTime, setStartTime] = useState<Date | null>(null); // Guarda la hora de inicio
+    const [taskDuration, setTaskDuration] = useState<number | null>(null); // Guarda la duración
+
 
     const router = useRouter();
 
@@ -181,32 +184,41 @@ export default function Page() {
             window.GazeCloudAPI.OnCalibrationComplete = function () {
                 console.log('Calibración completa');
                 setCalibrationComplete(true);
+                console.log('Temporizador iniciado:', new Date());
             };
             window.GazeCloudAPI.OnCamDenied = function () { console.log('No se puede obtener acceso a la cámara'); }
-            window.GazeCloudAPI.OnError = function (msg) { console.log('ERROR: ' + msg); }
-            window.GazeCloudAPI.UseClickRecalibration = true;
             window.GazeCloudAPI.StartEyeTracking();
         } else {
             console.log('GazeCloudAPI no está disponible.');
         }
     };
+    
 
     const iniciarRecoleccion = () => {
-        setCollecting(true);
+        // Inicia el temporizador aquí, no en calibración
+        setStartTime(new Date());    // Guarda la hora actual como inicio
+        setGazeDataArray([]);        // Reinicia el array de puntos
+        setTaskDuration(null);       // Reinicia la duración de la tarea
+        setCollecting(true);         // Activa el estado de recolección
+    
+        console.log("Recolección de puntos iniciada.");
+    
         if (window.GazeCloudAPI) {
             window.GazeCloudAPI.OnResult = function (GazeData) {
                 if (collecting) {
                     let x = GazeData.docX;
                     let y = GazeData.docY;
-
+    
                     const margin = 50; // Aumentar el área visible
                     const width = window.innerWidth - margin;
                     const height = window.innerHeight - margin;
+    
+                    // Asegura que los puntos estén dentro del margen
                     if (x < margin) x = margin;
                     if (y < margin) y = margin;
                     if (x > width) x = width;
                     if (y > height) y = height;
-
+    
                     setGazeDataArray(prevArray => [...prevArray, { x, y }]);
                 }
             };
@@ -267,25 +279,27 @@ export default function Page() {
     };
 
     const handleGenerateSuggestion = () => {
-
-        saveElementsToLocalStorage();
-        console.log('Elementos con puntos coincidentes guardados en localStorage');
-
-        const rankedElements = elementsWithPoints
-            .map(element => ({
-                id: element.id,
-                pointsCount: element.points.length,
-                points: element.points,
-            }))
-            .sort((a, b) => b.pointsCount - a.pointsCount);
-
-        localStorage.setItem('rankedElements', JSON.stringify(rankedElements));
-        console.log('Elementos ordenados por puntos coincidentes:', rankedElements);
-
+        // Finaliza la recolección
+        setCollecting(false);
+        if (window.GazeCloudAPI) window.GazeCloudAPI.StopEyeTracking();
+    
+        // Calcula el tiempo total
+        if (startTime) {
+            const endTime = new Date();
+            const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000); // Duración en segundos
+            setTaskDuration(duration);
+            console.log(`Tiempo total de tarea: ${duration} segundos`);
+            localStorage.setItem('taskDuration', duration.toString());
+        }
+    
+        // Guarda los puntos en localStorage
         localStorage.setItem('gazeData', JSON.stringify(gazeDataArray));
-        console.log('Puntos de mirada guardados en localStorage:', gazeDataArray);
+        console.log('Puntos guardados:', gazeDataArray);
+    
+        // Redirige a la siguiente página
         router.push('/pages/nueva');
     };
+    
 
     const mostrarArrayPuntos = () => {
         console.log(gazeDataArray);
@@ -603,6 +617,14 @@ export default function Page() {
                             O
                         </button>
                     </div>
+                    {taskDuration !== null && (
+                        <div className="mt-4 text-center">
+                            <p className="text-lg font-bold text-blue-600">
+                                Tiempo Total: {taskDuration} segundos
+                            </p>
+                        </div>
+                    )}
+
 
                     {/* Contenedor para mostrar los puntos de mirada */}
                     {showGazePoints && (
