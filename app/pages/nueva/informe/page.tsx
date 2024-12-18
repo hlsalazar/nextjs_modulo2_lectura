@@ -161,7 +161,7 @@ const [showPoints, setShowPoints] = useState(false); // Estado para mostrar/ocul
       backgroundColor: processedGazeData.map((point) => {
         if (point.intensity === 1) {
           return "rgba(0, 0, 255, 0.3)"; // Azul claro para baja interacción
-        } else if (point.intensity <= 3) {
+        } else if (point.intensity < 3) {
           return "rgba(255, 165, 0, 0.6)"; // Naranja para media interacción
         } else {
           return "rgba(255, 0, 0, 0.8)"; // Rojo fuerte para alta interacción
@@ -186,7 +186,7 @@ const scatterOptions = {
         label: (tooltipItem: TooltipItem<"scatter">) => {
           const dataPoint = tooltipItem.raw as { x: number; y: number; intensity: number };
           const classification =
-            dataPoint.intensity > 5
+            dataPoint.intensity > 4
               ? "Alta Interacción 🔴"
               : dataPoint.intensity > 2
               ? "Media Interacción 🟠"
