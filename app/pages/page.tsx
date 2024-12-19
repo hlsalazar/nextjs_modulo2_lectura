@@ -16,6 +16,12 @@ interface Point {
     y: number;
 }
 
+interface GazeData {
+    docX: number; // Coordenada X en el documento
+    docY: number; // Coordenada Y en el documento
+}
+
+
 function roundToTolerance(value: number, tolerance: number): number {
     return Math.round(value / tolerance) * tolerance;
 }
@@ -204,7 +210,7 @@ export default function Page() {
         console.log("Recolección de puntos iniciada.");
     
         if (window.GazeCloudAPI) {
-            window.GazeCloudAPI.OnResult = function (GazeData) {
+            window.GazeCloudAPI.OnResult = function (GazeData: GazeData) {
                 if (collecting) {
                     let x = GazeData.docX;
                     let y = GazeData.docY;
@@ -521,7 +527,7 @@ export default function Page() {
                                             <button
                                                 id="add-to-bag-button"
                                                 type="submit"
-                                                className="mt-2 flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-1 text-xs font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 border border-red-500 p-1"
+                                                className="mt-2 flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-1 text-xs font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                                             >
                                                 Add to bag
                                             </button>
