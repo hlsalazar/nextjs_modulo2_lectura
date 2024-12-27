@@ -11,6 +11,8 @@
   "dependencies": {
     "@headlessui/react": "^2.1.2",
     "@heroicons/react": "^2.1.5",
+    "@turf/clusters-dbscan": "^7.1.0",
+    "@turf/helpers": "^7.1.0",
     "@types/d3-interpolate": "^3.0.4",
     "chart.js": "^4.4.3",
     "d3-interpolate": "^3.0.1",

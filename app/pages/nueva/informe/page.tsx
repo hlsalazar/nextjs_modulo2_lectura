@@ -53,7 +53,6 @@ const calculatePointIntensities = (points: Point[]) => {
   });
 };
 
-
 const InformePage: React.FC = () => {
   const heatmapContainerRef = useRef<HTMLDivElement | null>(null);
   const [generatedGazeData, setGeneratedGazeData] = useState<Point[]>([]);
@@ -68,27 +67,52 @@ const InformePage: React.FC = () => {
 
 const [showPoints, setShowPoints] = useState(false); // Estado para mostrar/ocultar la lista de puntos
 
+// Estado para obtener los elementos más vistos
+const [mostViewedElements, setMostViewedElements] = useState<
+  { id: string; pointsCount: number; content: string }[]
+>([]);
+
+
   const MAX_CANVAS_WIDTH = 600; // Ajustar el ancho máximo del canvas
   const MAX_CANVAS_HEIGHT = 400; // Ajustar el alto máximo del canvas
 
   // Cargar datos de localStorage
   useEffect(() => {
     const storedGeneratedGazeData = localStorage.getItem("gazeData");
-    const storedPageGeneratedGazeData = localStorage.getItem(
-      "gazeDataGenerado"
-    );
-
+    const storedPageGeneratedGazeData = localStorage.getItem("gazeDataGenerado");
+    const storedMostViewedElements = localStorage.getItem("mostViewedElements");
+  
     if (storedGeneratedGazeData) {
-      const data = JSON.parse(storedGeneratedGazeData);
-      console.log("Puntos cargados desde localStorage:", data);
-      setGeneratedGazeData(data);
+      try {
+        const data = JSON.parse(storedGeneratedGazeData);
+        console.log("Puntos cargados desde localStorage:", data);
+        setGeneratedGazeData(data);
+      } catch (error) {
+        console.error("Error al parsear gazeData:", error);
+      }
     }
+  
     if (storedPageGeneratedGazeData) {
-      const data = JSON.parse(storedPageGeneratedGazeData);
-      console.log("Puntos generados en la página:", data);
-      setPageGeneratedGazeData(data);
+      try {
+        const data = JSON.parse(storedPageGeneratedGazeData);
+        console.log("Puntos generados en la página:", data);
+        setPageGeneratedGazeData(data);
+      } catch (error) {
+        console.error("Error al parsear gazeDataGenerado:", error);
+      }
+    }
+  
+    if (storedMostViewedElements) {
+      try {
+        const elements = JSON.parse(storedMostViewedElements);
+        console.log("Elementos más vistos cargados desde localStorage:", elements);
+        setMostViewedElements(elements);
+      } catch (error) {
+        console.error("Error al parsear mostViewedElements:", error);
+      }
     }
   }, []);
+  
 
   // Crear el mapa de calor
   useEffect(() => {
@@ -142,11 +166,36 @@ const [showPoints, setShowPoints] = useState(false); // Estado para mostrar/ocul
 
   useEffect(() => {
     if (generatedGazeData.length > 0) {
+    }
+  }, [generatedGazeData]); // Se ejecuta cuando `generatedGazeData` cambia
+  
+
+  // FUNCION PARA CALCULAR LOS ELEMENTOS MAS VISTOS
+
+  const getMostViewedElementsFromLocalStorage = () => {
+    const storedMostViewedElements = localStorage.getItem("mostViewedElements");
+    if (storedMostViewedElements) {
+      try {
+        const elements = JSON.parse(storedMostViewedElements);
+        console.log("Elementos más vistos cargados desde localStorage:", elements);
+        return elements;
+      } catch (error) {
+        console.error("Error al parsear los elementos más vistos:", error);
+        return [];
+      }
+    } else {
+      console.warn("No se encontraron elementos más vistos en localStorage.");
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    if (generatedGazeData.length > 0) {
       const updatedData = calculatePointIntensities(generatedGazeData);
       setProcessedGazeData(updatedData);
     }
   }, [generatedGazeData]); // Se recalcula cuando generatedGazeData cambia
-
+  
 
 
   const scatterData = {
@@ -246,32 +295,45 @@ const scatterOptions = {
   
   
 
-  const saveReportToFirebase = async () => {
-    if (!generatedGazeData.length) {
-      alert("No hay datos de mirada generados para guardar.");
-      return;
-    }
-  
-    try {
+const saveReportToFirebase = async () => {
+  if (!generatedGazeData.length) {
+    alert("No hay datos de mirada generados para guardar.");
+    return;
+  }
 
-      // Recupera el tiempo de la tarea desde localStorage
-      const taskDuration = localStorage.getItem("taskDuration");
-      //Construye el objeto de datos
-      const reportData = {
-        generatedGazeData,
-        pageGeneratedGazeData,
-        taskDuration: taskDuration ? Number(taskDuration) : 0, // Convierte a número si existe
-        timestamp: new Date().toISOString(),
-      };
-  
-      const docRef = await addDoc(collection(db, "reports"), reportData);
-      console.log("Informe guardado con ID:", docRef.id);
-      alert("Informe guardado exitosamente en Firebase.");
-    } catch (error) {
-      console.error("Error al guardar el informe:", error);
-      alert("Hubo un error al guardar el informe. Por favor, intenta nuevamente.");
-    }
-  };
+  if (!mostViewedElements || mostViewedElements.length === 0) {
+    alert("No hay elementos más vistos para guardar.");
+    return;
+  }
+
+  try {
+    // Recupera el tiempo de la tarea desde localStorage
+    const taskDuration = localStorage.getItem("taskDuration");
+
+    // Valida que los datos sean correctos antes de construir el objeto
+    console.log("Generated gaze data:", generatedGazeData);
+    console.log("Page generated gaze data:", pageGeneratedGazeData);
+    console.log("Most viewed elements to db:", mostViewedElements);
+
+    // Construye el objeto de datos
+    const reportData = {
+      generatedGazeData,
+      pageGeneratedGazeData,
+      taskDuration: taskDuration ? Number(taskDuration) : 0, // Convierte a número si existe
+      timestamp: new Date().toISOString(),
+      mostViewedElements, // Asegúrate de incluir estos datos correctamente
+    };
+
+    const docRef = await addDoc(collection(db, "reports"), reportData);
+    console.log("Informe guardado con ID:", docRef.id);
+    alert("Informe guardado exitosamente en Firebase.");
+  } catch (error) {
+    console.error("Error al guardar el informe:", error);
+    alert("Hubo un error al guardar el informe. Por favor, intenta nuevamente.");
+  }
+};
+
+
   
   
 
@@ -337,6 +399,27 @@ const scatterOptions = {
           )}
 
       </section>
+
+      <section style={styles.section}>
+        <h2 style={styles.sectionTitle}>Elementos Más Vistos</h2>
+        {mostViewedElements.length > 0 ? (
+          <ul style={{ paddingLeft: "20px" }}>
+            {mostViewedElements.map((element, index) => (
+              <li
+                key={index}
+                style={{ fontSize: "14px", color: "#555", marginBottom: "5px" }}
+              >
+                <strong>{element.id}</strong>: {element.content} <br />
+                <em>Veces vistas: {element.pointsCount}</em>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No se encontraron elementos más vistos.</p>
+        )}
+      </section>
+
+
 
       <section style={styles.section}>
         <h2 style={styles.sectionTitle}>Visualización de Datos</h2>

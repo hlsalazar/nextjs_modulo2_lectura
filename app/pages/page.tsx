@@ -26,6 +26,15 @@ function roundToTolerance(value: number, tolerance: number): number {
     return Math.round(value / tolerance) * tolerance;
 }
 
+function calculateMostViewedElements(elementsWithPoints: { id: string, points: Point[] }[]) {
+    return elementsWithPoints.map(element => ({
+        id: element.id,
+        pointsCount: element.points.length, // Número de puntos asociados al elemento
+        content: document.getElementById(element.id)?.textContent || "Sin descripción", // Contenido del elemento
+    })).sort((a, b) => b.pointsCount - a.pointsCount); // Ordenar por número de puntos de mayor a menor
+}
+
+
 function getMostFrequentPoints(data: Point[], tolerance: number = 5): (Point & { count: number })[] {
     const counts: Record<string, Point & { count: number }> = {};
     data.forEach(point => {
@@ -140,12 +149,13 @@ export default function Page() {
     }, []);
 
     useEffect(() => {
-        if (!isLoading && data.length > 0) {
+        if (!isLoading && gazeDataArray.length > 0) {
             const elements = document.querySelectorAll<HTMLElement>(
                 "[id^='image'], #product-name, #product-price, #reviews-link, #color-label, [id^='color-span-'], #size-label, #size-guide, [id^='size-span-'], #add-to-bag-button, #description-text, #highlights-list, [id^='highlight-span-'], #details-text"
             );
+    
             const elementsArray = Array.from(elements);
-
+    
             const elementsPoints: { id: string, points: Point[] }[] = elementsArray.map(element => {
                 const rect = element.getBoundingClientRect();
                 const pointsInElement = gazeDataArray.filter(point => (
@@ -154,11 +164,16 @@ export default function Page() {
                 ));
                 return { id: element.id, points: pointsInElement };
             }).filter(item => item.points.length > 0);
-
+    
             setElementsWithPoints(elementsPoints);
-            console.log('Elementos con puntos coincidentes:', elementsPoints);
+    
+            // Calcular elementos más vistos y guardar en localStorage
+            const mostViewedElements = calculateMostViewedElements(elementsPoints);
+            console.log('Elementos más vistos:', mostViewedElements);
+            localStorage.setItem('mostViewedElements', JSON.stringify(mostViewedElements));
         }
     }, [isLoading, gazeDataArray]);
+    
 
     // Funciones para manejo de la calibración y recolección de puntos de mirada
     useEffect(() => {
@@ -234,12 +249,18 @@ export default function Page() {
     };
 
     const handleSaveAndNavigate = () => {
-        const content = document.querySelectorAll('#image-gallery, #product-details, #product-description');
-        const contentArray = Array.from(content).map((element) => element.outerHTML);
-        localStorage.setItem('pageContent', JSON.stringify(contentArray));
-        console.log('Contenido de la página guardado en localStorage');
-        router.push('/pages/nueva'); // Ajusta esta ruta según tu estructura de rutas
+        const mostViewedElements = localStorage.getItem('mostViewedElements');
+        if (!mostViewedElements) {
+            console.warn('No se han generado elementos más vistos.');
+            alert('Por favor, asegúrate de recolectar datos antes de guardar el informe.');
+            return;
+        }
+    
+        console.log('Elementos más vistos guardados:', JSON.parse(mostViewedElements));
+    
+        router.push('/pages/nueva');
     };
+    
 
     const handleClick = () => {
         setShowHighlightedPage(true);
@@ -301,6 +322,11 @@ export default function Page() {
         // Guarda los puntos en localStorage
         localStorage.setItem('gazeData', JSON.stringify(gazeDataArray));
         console.log('Puntos guardados:', gazeDataArray);
+
+        // Guarda los elementos más vistos
+        const mostViewedElements = localStorage.getItem('mostViewedElements');
+        console.log('Guardando elementos más vistos en local storage:', mostViewedElements);
+
     
         // Redirige a la siguiente página
         router.push('/pages/nueva');
