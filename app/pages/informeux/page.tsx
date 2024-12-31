@@ -1,37 +1,48 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/firebaseConfig" //Ruta de firebase
+import { db } from "@/firebaseConfig"; // Ruta de firebase
 import { clustersDbscan } from "@turf/clusters-dbscan";
 import { featureCollection, point } from "@turf/helpers";
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+import React from "react";
 
 interface MostViewedElement {
   id: string;
-  viewCount: number;
+  pointsCount: number;
   content: string;
 }
 
-interface Report {
-  id: string; // o el tipo de dato que tenga el ID
-  mostViewedElements?: MostViewedElement[];
-  [key: string]: any; // Si hay más campos, usa un índice flexible
-}
-
 const DashboardSkeleton: React.FC = () => {
-  const [ reports, setReports ] = useState<any[]>([]);
-  const [ loading, setLoading] = useState(true);
+  const [reports, setReports] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
   const [clusters, setClusters] = useState<any[]>([]);
-  const [overallMostViewed, setOverallMostViewed] = useState<any[]>([]);
+  const [importantElements, setImportantElements] = useState<MostViewedElement[]>([]);
+  const [expandedCard, setExpandedCard] = useState<number | null>(null); // Estado para manejar la tarjeta expandida
 
 
+  // Registrar los componentes necesarios para Chart.js
+  ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
-  //Funcion para obtener los datos de firestore
+  // Función para obtener los datos de Firestore
   const fetchReports = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "reports"));
-      const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const data = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       setReports(data);
       return data;
     } catch (error) {
@@ -41,47 +52,82 @@ const DashboardSkeleton: React.FC = () => {
     }
   };
 
-  //función para calcular los elementos más vistos de todo slos registros
+  // Función para calcular los elementos más importantes
+  const calculateImportantElements = (reports: any[]) => {
+    const elementCounts = new Map<string, { pointsCount: number; content: string }>();
 
-  const calculateOverallMostViewedElements = (reports: Report[]): { id: string; viewCount: number }[] => {
-    const elementCounts = new Map<string, number>();
-  
     reports.forEach((report) => {
       if (report.mostViewedElements) {
-        report.mostViewedElements.forEach((element) => {
-          const { id, viewCount } = element;
-  
+        report.mostViewedElements.forEach((element: MostViewedElement) => {
+          const { id, pointsCount, content } = element;
+
+          // Sumar vistas acumulativas
           if (elementCounts.has(id)) {
-            elementCounts.set(id, elementCounts.get(id)! + viewCount);
+            const existing = elementCounts.get(id)!;
+            elementCounts.set(id, {
+              pointsCount: existing.pointsCount + pointsCount,
+              content: existing.content,
+            });
           } else {
-            elementCounts.set(id, viewCount);
+            elementCounts.set(id, { pointsCount, content });
           }
         });
       }
     });
+
+    // Ordenar por vistas y convertir a un array
+    const sortedElements = Array.from(elementCounts.entries())
+      .map(([id, { pointsCount, content }]) => ({ id, pointsCount, content }))
+      .sort((a, b) => b.pointsCount - a.pointsCount);
+
+    setImportantElements(sortedElements); // Actualiza el estado
+  };
+
   
-    // Ordenar por número de vistas y devolver como un array
-    return Array.from(elementCounts.entries())
-      .map(([id, viewCount]) => ({ id, viewCount }))
-      .sort((a, b) => b.viewCount - a.viewCount);
+  const toggleExpandCard = (index: number) => {
+    setExpandedCard(expandedCard === index ? null : index); // Alternar expansión
   };
   
 
-  useEffect(() => {
-    const fetchAndProcessReports = async () => {
-      const reportsData = await fetchReports();
-      if (reports?.length > 0) {
-        const mostViewed = calculateOverallMostViewedElements(reports);
-        console.log("Resumen general de elementos más vistos:", mostViewed);
-        setOverallMostViewed(mostViewed);
-      }
-    };
-    fetchAndProcessReports();
-  }, []);
-  
-  
+  const barData = {
+    labels: importantElements.map((el) => el.id).slice(0, 5),
+    datasets: [
+      {
+        label: "Veces vistas",
+        data: importantElements.map((el) => el.pointsCount).slice(0, 5),
+        backgroundColor: [
+          "rgba(75, 192, 192, 0.6)",
+          "rgba(54, 162, 235, 0.6)",
+          "rgba(255, 206, 86, 0.6)",
+          "rgba(255, 99, 132, 0.6)",
+          "rgba(153, 102, 255, 0.6)",
+        ],
+        borderColor: [
+          "rgba(75, 192, 192, 1)",
+          "rgba(54, 162, 235, 1)",
+          "rgba(255, 206, 86, 1)",
+          "rgba(255, 99, 132, 1)",
+          "rgba(153, 102, 255, 1)",
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
 
-  // Función para ejecutar DBSCAN
+  const barOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        display: true,
+        position: "top" as const,
+      },
+      title: {
+        display: true,
+        text: "Elementos más Importantes (Top 5)",
+      },
+    },
+  };
+  // Ejecutar DBSCAN
   const runDBSCAN = () => {
     if (reports.length === 0) {
       alert("No hay datos para analizar.");
@@ -107,18 +153,31 @@ const DashboardSkeleton: React.FC = () => {
     const clustered = clustersDbscan(geojson, epsilon, { minPoints });
 
     // Filtrar clusters y organizar los resultados
-    const clusteredData = clustered.features.reduce((acc: any[], feature: any) => {
-      const clusterId = feature.properties?.cluster;
-      if (clusterId !== undefined) {
-        acc[clusterId] = acc[clusterId] || [];
-        acc[clusterId].push(feature.geometry.coordinates);
-      }
-      return acc;
-    }, []);
+    const clusteredData = clustered.features.reduce(
+      (acc: any[], feature: any) => {
+        const clusterId = feature.properties?.cluster;
+        if (clusterId !== undefined) {
+          acc[clusterId] = acc[clusterId] || [];
+          acc[clusterId].push(feature.geometry.coordinates);
+        }
+        return acc;
+      },
+      []
+    );
 
     setClusters(clusteredData);
     console.log("Clusters encontrados:", clusteredData);
   };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const data = await fetchReports();
+      if (data && data.length > 0) {
+        calculateImportantElements(data);
+      }
+    };
+    fetchData();
+  }, []);
   
 
   // Estilos en un objeto
@@ -175,10 +234,59 @@ const DashboardSkeleton: React.FC = () => {
       borderRadius: "5px",
     },
     statsSection: {
+      padding: "20px",
+      backgroundColor: "#f4f6f8",
+      borderRadius: "10px",
+      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+      marginBottom: "20px",
+    },
+    cardGrid: {
       display: "grid",
       gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
       gap: "20px",
-      marginBottom: "20px",
+    },
+    card: {
+      backgroundColor: "#e6f7ff",
+      borderRadius: "10px",
+      boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+      padding: "15px",
+      display: "flex",
+      flexDirection: "column" as const,
+      justifyContent: "space-between",
+      transition: "all 0.3s ease",
+      cursor: "pointer",
+      height: "150px", // Altura inicial
+      overflow: "hidden", // Oculta contenido extra cuando no está expandido
+    },
+    expandedCard: {
+      height: "auto", // La tarjeta se expande a su altura total
+      overflow: "visible", // Permite que todo el contenido se vea
+    },
+    
+    cardHeader: {
+      borderBottom: "1px solid #eaeaea",
+      paddingBottom: "10px",
+      marginBottom: "10px",
+    },
+    cardTitle: {
+      fontSize: "1.2rem",
+      fontWeight: "bold",
+      color: "#007bff",
+    },
+    cardBody: {
+      display: "flex",
+      flexDirection: "column" as "column", // Solución aquí
+      alignItems: "flex-start",
+      gap: "10px",
+    },
+    cardContent: {
+      fontSize: "0.9rem",
+      color: "#555",
+    },
+    cardMetric: {
+      fontSize: "1rem",
+      fontWeight: "bold",
+      color: "#28a745",
     },
     statCard: {
       backgroundColor: "#fff",
@@ -186,21 +294,6 @@ const DashboardSkeleton: React.FC = () => {
       borderRadius: "10px",
       boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)",
       textAlign: "center" as const,
-    },
-    statValue: {
-      fontSize: "1.5rem",
-      fontWeight: "bold",
-      margin: "10px 0",
-    },
-    statPercentage: {
-      fontSize: "0.9rem",
-      fontWeight: "bold",
-    },
-    positive: {
-      color: "#38a169",
-    },
-    negative: {
-      color: "#e53e3e",
     },
     chartsSection: {
       display: "grid",
@@ -228,9 +321,6 @@ const DashboardSkeleton: React.FC = () => {
       display: "block",
       transition: "background-color 0.3s ease",
     },
-    toggleButtonHover: {
-      backgroundColor: "#0056b3",
-    },    
   };
 
   return (
@@ -262,23 +352,10 @@ const DashboardSkeleton: React.FC = () => {
               <h3>Cargando datos...</h3>
             </div>
           ) : reports.length > 0 ? (
-            (showAll ? reports : reports.slice(0,3)).map((report) => (
+            (showAll ? reports : reports.slice(0, 3)).map((report) => (
               <div key={report.id} style={styles.statCard}>
                 <h3>Reporte ID: {report.id}</h3>
-                <p style={styles.statValue}>
-                  Puntos de Mirada: {report.generatedGazeData?.length || 0}
-                </p>
-                {report.generatedGazeData && report.generatedGazeData.length > 0 ? (
-                  <ul style={{ listStyleType: "none", padding: 0, fontSize: "0.9rem" }}>
-                    {report.generatedGazeData.slice(0, 3).map((point: any, index: number) => (
-                      <li key={index}>
-                        Coordenadas: X = {point.x.toFixed(2)}, Y = {point.y.toFixed(2)}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p style={{ color: "#718096" }}>Sin datos de mirada registrados</p>
-                )}
+                <p>Puntos de Mirada: {report.generatedGazeData?.length || 0}</p>
               </div>
             ))
           ) : (
@@ -291,29 +368,12 @@ const DashboardSkeleton: React.FC = () => {
           )}
         </section>
 
-        {/*Botón de expansión*/}
-
+        {/* Botón de expansión */}
         {reports.length > 3 && (
           <button style={styles.toggleButton} onClick={() => setShowAll((prev) => !prev)}>
             {showAll ? "Mostrar Menos" : "Mostrar Más"}
           </button>
         )}
-
-        <section style={styles.statsSection}>
-          {clusters.length > 0 ? (
-            clusters.map((element, index) => (
-              <div key={index} style={styles.statCard}>
-                <h3>Elemento: {element.id}</h3>
-                <p>Veces visto: {element.viewCount}</p>
-              </div>
-            ))
-          ) : (
-            <div style={styles.statCard}>
-              <p>No se encontraron elementos más vistos.</p>
-            </div>
-          )}
-        </section>
-
 
         {/* Botón para ejecutar DBSCAN */}
         <button style={styles.toggleButton} onClick={runDBSCAN}>
@@ -322,26 +382,150 @@ const DashboardSkeleton: React.FC = () => {
 
         {/* Mostrar Clusters */}
         <section style={styles.statsSection}>
-          {clusters.length > 0 ? (
-            clusters.map((cluster, index) => (
-              <div key={index} style={styles.statCard}>
-                <h3>Cluster {index + 1}</h3>
-                <p>Puntos en el Cluster: {cluster.length}</p>
-              </div>
-            ))
-          ) : (
-            <div style={styles.statCard}>
+          <div style={styles.statCard}>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: "bold" }}>Resultados de Clustering</h3>
+            {clusters.length > 0 ? (
+              clusters.map((cluster, index) => (
+                <div key={index} style={{ marginBottom: "10px" }}>
+                  <strong>Cluster {index + 1}</strong>
+                  <p style={{ color: "#38a169" }}>Puntos en el Cluster: {cluster.length}</p>
+                </div>
+              ))
+            ) : (
               <p>No se han calculado clusters.</p>
-            </div>
-          )}
+            )}
+          </div>  
+        </section>
+
+        
+        {/* ELEMENTOS MÁS IMPORTANTE*/}
+
+        <section style={styles.statsSection}>
+          <div style={styles.statCard}>
+            {importantElements.length > 0 ? (
+              <>
+                <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "20px" }}>
+                  Elementos más Importantes
+                </h3>
+                <div style={styles.cardGrid}>
+                {importantElements.slice(0, 5).map((element, index) => (
+                  <div
+                    key={element.id}
+                    style={{
+                      ...styles.card,
+                      height: expandedCard === index ? "auto" : "150px",
+                      overflow: expandedCard === index ? "visible" : "hidden",
+                    }}
+                  >
+                    <div style={styles.cardHeader}>
+                      <strong style={styles.cardTitle}>
+                        {index + 1}. {element.id}
+                      </strong>
+                    </div>
+                    <div style={styles.cardBody}>
+                      <span style={styles.cardMetric}>
+                        Veces vistas: <strong>{element.pointsCount}</strong>
+                      </span>
+                      <p style={styles.cardContent}>
+                        {expandedCard === index
+                          ? element.content || "Contenido no disponible"
+                          : `${element.content?.slice(0, 15) || ""}${element.content?.length > 15 ? "..." : ""}`}
+                      </p>
+                      {element.content && element.content.length > 15 && (
+                        <span
+                          style={{
+                            color: "#007bff",
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                          }}
+                          onClick={() => setExpandedCard(expandedCard === index ? null : index)}
+                        >
+                          {expandedCard === index ? "Ver menos" : "Ver más"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                </div>
+
+
+                {/* Gráfico de barras */}
+                <div style={{ marginTop: "20px" }}>
+                  <Bar
+                    data={{
+                      labels: importantElements.slice(0, 5).map((el) => el.id),
+                      datasets: [
+                        {
+                          label: "Veces vistas",
+                          data: importantElements.slice(0, 5).map((el) => el.pointsCount),
+                          backgroundColor: [
+                            "rgba(75, 192, 192, 0.6)",
+                            "rgba(54, 162, 235, 0.6)",
+                            "rgba(255, 206, 86, 0.6)",
+                            "rgba(255, 99, 132, 0.6)",
+                            "rgba(153, 102, 255, 0.6)",
+                          ],
+                          borderColor: [
+                            "rgba(75, 192, 192, 1)",
+                            "rgba(54, 162, 235, 1)",
+                            "rgba(255, 206, 86, 1)",
+                            "rgba(255, 99, 132, 1)",
+                            "rgba(153, 102, 255, 1)",
+                          ],
+                          borderWidth: 1,
+                        },
+                      ],
+                    }}
+                    options={{
+                      plugins: {
+                        legend: {
+                          display: true,
+                          position: "top",
+                        },
+                        tooltip: {
+                          enabled: true,
+                          callbacks: {
+                            label: function (context) {
+                              const elementIndex = context.dataIndex;
+                              const element = importantElements[elementIndex];
+                              return [
+                                `Elemento: ${element.id}`,
+                                `Veces vistas: ${element.pointsCount}`,
+                                `Contenido: ${element.content}`,
+                              ];
+                            },
+                          },
+                        },
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          title: {
+                            display: true,
+                            text: "Veces vistas",
+                          },
+                        },
+                        x: {
+                          title: {
+                            display: true,
+                            text: "Elementos",
+                          },
+                        },
+                      },
+                      responsive: true,
+                    }}
+                  />
+                </div>
+              </>
+            ) : (
+              <p>No hay elementos destacados.</p>
+            )}
+          </div>
         </section>
 
 
-        {/* Charts Section */}
-        <section style={styles.chartsSection}>
-          <div style={styles.chartPlaceholder}>Chart 1</div>
-          <div style={styles.chartPlaceholder}>Chart 2</div>
-        </section>
+
       </main>
     </div>
   );
