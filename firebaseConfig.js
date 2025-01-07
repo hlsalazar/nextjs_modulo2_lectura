@@ -11,7 +11,7 @@ const firebaseConfig = {
   storageBucket: "seguimiento-ocular-nextjsespe.firebasestorage.app",
   messagingSenderId: "741395500974",
   appId: "1:741395500974:web:116bb37d1483cb8c04023f",
-  measurementId: "G-SWM9K659QC",
+  measurementId: "G-SWM9K659QC"
 };
 
 // Inicializa Firebase

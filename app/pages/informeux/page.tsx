@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef} from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/firebaseConfig"; // Ruta de firebase
 import { clustersDbscan } from "@turf/clusters-dbscan";
 import { featureCollection, point } from "@turf/helpers";
 import { Bar } from "react-chartjs-2";
+import { Scatter } from "react-chartjs-2";
+import h337 from "heatmap.js"; // Importar Heatmap.js
+
 import {
   Chart as ChartJS,
   BarElement,
@@ -13,6 +16,7 @@ import {
   LinearScale,
   Tooltip,
   Legend,
+  PointElement,
 } from "chart.js";
 
 import React from "react";
@@ -30,10 +34,16 @@ const DashboardSkeleton: React.FC = () => {
   const [clusters, setClusters] = useState<any[]>([]);
   const [importantElements, setImportantElements] = useState<MostViewedElement[]>([]);
   const [expandedCard, setExpandedCard] = useState<number | null>(null); // Estado para manejar la tarjeta expandida
+  const [noisePoints, setNoisePoints] = useState<any[]>([]);
+  const [preprocessedPoints, setPreprocessedPoints] = useState<any[]>([]);//estado para los puntos pre procesados
+  const heatmapContainerRef = useRef<HTMLDivElement | null>(null);
+
+
+  
 
 
   // Registrar los componentes necesarios para Chart.js
-  ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
+  ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, PointElement);
 
   // Función para obtener los datos de Firestore
   const fetchReports = async () => {
@@ -51,6 +61,47 @@ const DashboardSkeleton: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Filtrar los puntos más importantes por densidad
+  const filterRelevantPoints = (points: { x: number; y: number; value: number }[], threshold: number) => {
+    const densityMap = new Map<string, number>();
+
+    points.forEach(({ x, y }) => {
+      const key = `${x},${y}`;
+      densityMap.set(key, (densityMap.get(key) || 0) + 1);
+    });
+
+    return points.filter(({ x, y }) => densityMap.get(`${x},${y}`)! >= threshold);
+  };
+
+  //Funcion para pre procesar los datos para el mapa de calor
+
+  // Función para normalizar y preprocesar los puntos de mirada
+  const preprocessGazeData = (reports: any[], containerHeight: number) => {
+    const allPoints = reports.flatMap((report) =>
+      Array.isArray(report.generatedGazeData)
+        ? report.generatedGazeData.map(({ x, y }: { x: number; y: number }) => ({
+            x: Math.round(x), // Redondear coordenadas
+            y: Math.round(y - containerHeight), // Invertir el eje Y
+            value: 1, // Asignar un peso inicial
+          }))
+        : []
+    );
+  
+    // Filtrar puntos con densidad mínima de 3
+    const filteredPoints = filterRelevantPoints(allPoints, 3);
+  
+    // Normalizar valores para el mapa de calor
+    const maxWeight = Math.max(...filteredPoints.map((p) => p.value));
+    const normalizedPoints = filteredPoints.map((p) => ({
+      ...p,
+      value: (p.value / maxWeight) * 100, // Escalar entre 0 y 100
+    }));
+  
+    return normalizedPoints;
+  };
+  
+
 
   // Función para calcular los elementos más importantes
   const calculateImportantElements = (reports: any[]) => {
@@ -87,6 +138,35 @@ const DashboardSkeleton: React.FC = () => {
   const toggleExpandCard = (index: number) => {
     setExpandedCard(expandedCard === index ? null : index); // Alternar expansión
   };
+
+
+  const generateHeatmap = (containerId: string, points: { x: number; y: number; value: number }[]): void => {
+    const container = document.querySelector(containerId) as HTMLElement;
+    if (!container) {
+      console.error(`No se encontró el contenedor con el ID: ${containerId}`);
+      return;
+    }
+  
+    const heatmapInstance = h337.create({
+      container,
+      radius: 30, // Ajustar el radio según la densidad
+      maxOpacity: 0.7,
+      minOpacity: 0.2,
+      blur: 0.85,
+    });
+  
+    const heatmapData = {
+      max: Math.max(...points.map((p) => p.value)), // Valor máximo en los datos
+      min: Math.min(...points.map((p) => p.value)), // Agregar el valor mínimo en los datos
+      data: points.map(({ x, y, value }) => ({ x, y, value })),
+    };
+    
+    // Renderiza el mapa de calor
+    heatmapInstance.setData(heatmapData);
+
+  };
+  
+  
   
 
   const barData = {
@@ -129,55 +209,156 @@ const DashboardSkeleton: React.FC = () => {
   };
   // Ejecutar DBSCAN
   const runDBSCAN = () => {
+    setClusters([]);
+    setNoisePoints([]);
+  
     if (reports.length === 0) {
       alert("No hay datos para analizar.");
       return;
     }
-
+  
+    // Extraer y verificar puntos de mirada
     const allPoints = reports.flatMap((report) =>
-      report.generatedGazeData?.map((point: any) => [point.x, point.y]) || []
+      Array.isArray(report.generatedGazeData)
+        ? report.generatedGazeData.map((point: any) => [point.x, point.y])
+        : []
     );
-
+  
     if (allPoints.length === 0) {
       alert("No hay puntos de mirada para procesar.");
       return;
     }
-
-    // Convertir los puntos a GeoJSON
-    const features = allPoints.map((coords) => point(coords));
+  
+    // Redondear y escalar puntos
+    const roundedPoints = allPoints.map(([x, y]) => [parseFloat(x.toFixed(2)), parseFloat(y.toFixed(2))]);
+    const scaledPoints = roundedPoints.map(([x, y]) => [x / 100, y / 100]); // Escalado para evitar rangos grandes
+  
+    // Revisar los datos de entrada
+    console.log("Cantidad de puntos totales:", roundedPoints.length);
+    console.log("Ejemplo de punto (original):", roundedPoints[0]);
+    console.log("Ejemplo de punto (escalado):", scaledPoints[0]);
+    console.log("Rango de coordenadas X (original):", {
+      min: Math.min(...roundedPoints.map(([x]) => x)),
+      max: Math.max(...roundedPoints.map(([x]) => x)),
+    });
+    console.log("Rango de coordenadas Y (original):", {
+      min: Math.min(...roundedPoints.map(([, y]) => y)),
+      max: Math.max(...roundedPoints.map(([, y]) => y)),
+    });
+  
+    // Parámetros de DBSCAN
+    const xRange = Math.max(...roundedPoints.map(([x]) => x)) - Math.min(...roundedPoints.map(([x]) => x));
+    const yRange = Math.max(...roundedPoints.map(([, y]) => y)) - Math.min(...roundedPoints.map(([, y]) => y));
+    const epsilon = 0.2; // Usar valor pequeño ya que los puntos están escalados
+    const minPoints = 5; // Ajuste adecuado para conjuntos más grandes
+  
+    console.log("Epsilon ajustado dinámicamente:", epsilon);
+  
+    // Crear el FeatureCollection para DBSCAN
+    const features = scaledPoints.map((coords) => point(coords));
     const geojson = featureCollection(features);
-
-    // Ejecutar DBSCAN con parámetros personalizados
-    const epsilon = 10; // Distancia máxima entre puntos
-    const minPoints = 3; // Puntos mínimos para formar un cluster
+  
+    // Ejecutar DBSCAN
     const clustered = clustersDbscan(geojson, epsilon, { minPoints });
-
-    // Filtrar clusters y organizar los resultados
-    const clusteredData = clustered.features.reduce(
-      (acc: any[], feature: any) => {
-        const clusterId = feature.properties?.cluster;
-        if (clusterId !== undefined) {
-          acc[clusterId] = acc[clusterId] || [];
-          acc[clusterId].push(feature.geometry.coordinates);
-        }
-        return acc;
-      },
-      []
-    );
-
+  
+    if (!clustered || !clustered.features) {
+      console.error("DBSCAN no generó resultados. Verifica los datos de entrada y parámetros.");
+      return;
+    }
+  
+    // Agrupar resultados en clusters y puntos de ruido
+    const clusteredData = clustered.features.reduce((acc: any[], feature: any) => {
+      const clusterId = feature.properties?.cluster;
+      if (clusterId !== undefined && clusterId !== -1) {
+        acc[clusterId] = acc[clusterId] || [];
+        acc[clusterId].push(feature.geometry.coordinates);
+      }
+      return acc;
+    }, []);
+  
+    const noise = clustered.features
+      .filter((feature: any) => feature.properties?.cluster === -1)
+      .map((feature: any) => feature.geometry.coordinates);
+  
     setClusters(clusteredData);
+    setNoisePoints(noise);
+  
     console.log("Clusters encontrados:", clusteredData);
+    console.log("Cantidad de clusters:", clusteredData.length);
+    console.log("Puntos de ruido:", noise.length);
+  
+    // Calcular métricas de los clústeres
+    const clusterMetrics = clusteredData.map((cluster) => {
+      const centerX = cluster.reduce((sum: number, [x]: [number, number]) => sum + x, 0) / cluster.length;
+      const centerY = cluster.reduce((sum: number, [, y]: [number, number]) => sum + y, 0) / cluster.length;
+  
+      return {
+        center: [centerX, centerY],
+        size: cluster.length,
+      };
+    });
+  
+    console.log("Métricas de clústeres:", clusterMetrics);
   };
+  
+  
+  
+  const prepareScatterData = () => {
+    const datasets = clusters.map((cluster, clusterIndex) => ({
+      label: `Cluster ${clusterIndex + 1}`,
+      data: cluster.map(([x, y]: number[]) => ({ x, y })),
+      backgroundColor: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.6)`,
+      borderColor: `rgba(${Math.random() * 255}, ${Math.random() * 255}, 1)`,
+      pointRadius: cluster.length > 10 ? 8 : 5, // Destacar clústeres grandes
+    }));
+  
+    if (noisePoints.length > 0) {
+      datasets.push({
+        label: "Ruido",
+        data: noisePoints.map(([x, y]: number[]) => ({ x, y })),
+        backgroundColor: "rgba(128, 128, 128, 0.6)",
+        borderColor: "rgba(128, 128, 128, 1)",
+        pointRadius: 5,
+      });
+    }
+  
+    return datasets;
+  };
+  
+  
+
+  
 
   useEffect(() => {
     const fetchData = async () => {
-      const data = await fetchReports();
+      const data = await fetchReports(); // Llama a fetchReports y obtiene los datos
       if (data && data.length > 0) {
-        calculateImportantElements(data);
+        calculateImportantElements(data); // Calcula los elementos más importantes
+  
+        const container = document.querySelector("#heatmapContainer") as HTMLElement;
+        if (container) {
+          const containerHeight = container.offsetHeight; // Aquí ya tiene una altura fija
+          console.log("Altura del contenedor:", containerHeight);
+  
+          const processedPoints = preprocessGazeData(data, containerHeight);
+          setPreprocessedPoints(processedPoints);
+        } else {
+          console.error("El contenedor del mapa de calor no está disponible.");
+        }
       }
     };
+  
     fetchData();
   }, []);
+  
+  
+
+  useEffect(() => {
+    if (preprocessedPoints.length > 0) {
+      generateHeatmap("#heatmapContainer", preprocessedPoints);
+    }
+  }, [preprocessedPoints]);
+  
   
 
   // Estilos en un objeto
@@ -366,14 +547,34 @@ const DashboardSkeleton: React.FC = () => {
               </p>
             </div>
           )}
+          {/* Botón de expansión */}
+          {reports.length > 3 && (
+            <button style={styles.toggleButton} onClick={() => setShowAll((prev) => !prev)}>
+              {showAll ? "Mostrar Menos" : "Mostrar Más"}
+            </button>
+          )}
         </section>
 
-        {/* Botón de expansión */}
-        {reports.length > 3 && (
-          <button style={styles.toggleButton} onClick={() => setShowAll((prev) => !prev)}>
-            {showAll ? "Mostrar Menos" : "Mostrar Más"}
-          </button>
-        )}
+
+        {/* Mapa de calor */}
+
+        <section style={styles.statsSection}>
+          <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "20px" }}>
+            Mapa de Calor: Resumen de Puntos de Mirada
+          </h3>
+          <div
+            id="heatmapContainer"
+            style={{
+              height: "400px", // Asignar una altura fija
+              position: "relative",
+              width: "100%",
+              border: "1px solid #ccc",
+            }}
+          ></div>
+        </section>
+
+
+
 
         {/* Botón para ejecutar DBSCAN */}
         <button style={styles.toggleButton} onClick={runDBSCAN}>
@@ -382,20 +583,86 @@ const DashboardSkeleton: React.FC = () => {
 
         {/* Mostrar Clusters */}
         <section style={styles.statsSection}>
-          <div style={styles.statCard}>
-            <h3 style={{ fontSize: "1.2rem", fontWeight: "bold" }}>Resultados de Clustering</h3>
-            {clusters.length > 0 ? (
-              clusters.map((cluster, index) => (
-                <div key={index} style={{ marginBottom: "10px" }}>
-                  <strong>Cluster {index + 1}</strong>
-                  <p style={{ color: "#38a169" }}>Puntos en el Cluster: {cluster.length}</p>
-                </div>
-              ))
-            ) : (
-              <p>No se han calculado clusters.</p>
-            )}
-          </div>  
+        {clusters.length > 0 ? (
+          clusters.map((cluster, index) => (
+            <div key={index} style={{ marginBottom: "10px" }}>
+              <strong>Cluster {index + 1}</strong>
+              <p style={{ color: "#38a169" }}>Puntos en el Cluster: {cluster.length}</p>
+              {cluster.map((coords: number[], i: number) => (
+                <span key={i} style={{ display: "block" }}>
+                  ({coords[0].toFixed(2)}, {coords[1].toFixed(2)})
+                </span>
+              ))}
+            </div>
+          ))
+        ) : (
+          <p>No se han calculado clusters.</p>
+        )}
+
         </section>
+
+        <section style={styles.statsSection}>
+          <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "20px" }}>
+            Gráfico de Dispersión: Clústeres y Ruido
+          </h3>
+          {
+            clusters.length > 0 || noisePoints.length > 0 ? (
+              <>
+                {/* Crear scatterData dinámicamente */}
+                {(() => {
+                  const scatterData = {
+                    datasets: prepareScatterData(),
+                  };
+                  return (
+                    <Scatter
+                      data={scatterData}
+                      options={{
+                        plugins: {
+                          tooltip: {
+                            callbacks: {
+                              label: (context: any) => {
+                                const { x, y } = context.raw;
+                                return `X: ${x.toFixed(2)}, Y: ${y.toFixed(2)}`;
+                              },
+                            },
+                          },
+                          legend: {
+                            display: true,
+                            position: "top",
+                          },
+                          title: {
+                            display: true,
+                            text: "Distribución de Puntos y Clústeres (DBSCAN)",
+                          },
+                        },
+                        scales: {
+                          x: {
+                            beginAtZero: true,
+                            title: {
+                              display: true,
+                              text: "Coordenada X",
+                            },
+                          },
+                          y: {
+                            beginAtZero: true,
+                            title: {
+                              display: true,
+                              text: "Coordenada Y",
+                            },
+                          },
+                        },
+                        responsive: true,
+                      }}
+                    />
+                  );
+                })()}
+              </>
+            ) : (
+              <p>No hay datos para mostrar en el gráfico de dispersión.</p>
+            )
+          }
+        </section>
+
 
         
         {/* ELEMENTOS MÁS IMPORTANTE*/}
