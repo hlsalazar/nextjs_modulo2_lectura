@@ -10,6 +10,7 @@ import { Radio, RadioGroup } from '@headlessui/react';
 import "react-responsive-carousel/lib/styles/carousel.min.css";
 import { Carousel } from 'react-responsive-carousel';
 import Link from 'next/link';
+import { TrashIcon } from '@heroicons/react/24/outline'; // Asegúrate de importar el ícono
 
 interface Point {
     x: number;
@@ -20,6 +21,16 @@ interface GazeData {
     docX: number; // Coordenada X en el documento
     docY: number; // Coordenada Y en el documento
 }
+
+interface CartItem {
+    product: string;
+    color: string;
+    size: string;
+    image: string;
+    alt: string; // Agregar la propiedad alt
+}
+
+
 
 
 function roundToTolerance(value: number, tolerance: number): number {
@@ -116,6 +127,16 @@ export default function Page() {
     const [elementsWithPoints, setElementsWithPoints] = useState<{ id: string, points: Point[] }[]>([]);
     const [showHighlightedPage, setShowHighlightedPage] = useState(false);
     const [showMatchingElements, setShowMatchingElements] = useState(false); // Estado para controlar la visibilidad del recuadro azul
+    const [cartItems, setCartItems] = useState<CartItem[]>([]); // Estado tipado
+    const [activeImageIndex, setActiveImageIndex] = useState(0); // Índice de la imagen activa
+
+
+    const [isCartOpen, setIsCartOpen] = useState(false); // Controla el modal
+    
+    const toggleCartModal = () => {
+        setIsCartOpen(!isCartOpen); // Alterna la visibilidad del modal
+    };
+
 
     const [showGazePoints, setShowGazePoints] = useState(true);
 
@@ -173,6 +194,49 @@ export default function Page() {
             localStorage.setItem('mostViewedElements', JSON.stringify(mostViewedElements));
         }
     }, [isLoading, gazeDataArray]);
+
+    useEffect(() => {
+        const storedCart = localStorage.getItem("cartItems");
+        if (storedCart) {
+            setCartItems(
+                JSON.parse(storedCart).map((item: Partial<CartItem>) => ({
+                    product: item.product || "Producto desconocido",
+                    color: item.color || "Color no especificado",
+                    size: item.size || "Talla no especificada",
+                    image: item.image || "https://via.placeholder.com/50", // Fallback para imágenes
+                }))
+            );
+        }
+    }, []);
+    
+    
+    
+
+    useEffect(() => {
+        const storedGazeData = localStorage.getItem("gazeDataArray");
+        if (storedGazeData) {
+            setGazeDataArray(JSON.parse(storedGazeData));
+            console.log("Datos de mirada cargados desde localStorage.");
+        } else {
+            console.log("No se encontraron datos de mirada en localStorage.");
+        }
+    }, []);
+    
+
+    useEffect(() => {
+        const isFirstRun = localStorage.getItem("firstRun");
+    
+        if (!isFirstRun) {
+            // Limpia los datos de mirada y carrito la primera vez
+            localStorage.removeItem("gazeDataArray"); // Limpia datos de mirada
+            localStorage.removeItem("cartItems"); // Limpia datos del carrito
+            localStorage.setItem("firstRun", "true"); // Marca que ya no es la primera vez
+            console.log("Datos limpiados por ser la primera vez que se inicia la aplicación.");
+        } else {
+            console.log("Datos preservados. No es la primera vez que se inicia la aplicación.");
+        }
+    }, []);
+    
     
 
     // Funciones para manejo de la calibración y recolección de puntos de mirada
@@ -239,8 +303,14 @@ export default function Page() {
                     if (y < margin) y = margin;
                     if (x > width) x = width;
                     if (y > height) y = height;
+
+                    const newPoint = {x , y};
     
-                    setGazeDataArray(prevArray => [...prevArray, { x, y }]);
+                    setGazeDataArray((prevArray) => {
+                        const updatedArray = [...prevArray, newPoint];
+                        localStorage.setItem("gazeDataArray", JSON.stringify(updatedArray));
+                        return updatedArray;
+                    });
                 }
             };
         } else {
@@ -257,8 +327,17 @@ export default function Page() {
         }
     
         console.log('Elementos más vistos guardados:', JSON.parse(mostViewedElements));
+
+        // Guarda datos clave antes de navegar
+        localStorage.setItem("cartItems", JSON.stringify(cartItems));
+        localStorage.setItem("gazeDataArray", JSON.stringify(gazeDataArray));
+
+        // 2. Verifica los datos que estás guardando en localStorage para cartItems y gazeDataArray
+        console.log("Cart Items guardados:", JSON.parse(localStorage.getItem("cartItems") || "[]"));
+        console.log("Puntos de mirada guardados:", JSON.parse(localStorage.getItem("gazeDataArray") || "[]"));
+        
     
-        router.push('/pages/nueva');
+        router.push('/pages/nueva/informe');
     };
     
 
@@ -329,7 +408,7 @@ export default function Page() {
 
     
         // Redirige a la siguiente página
-        router.push('/pages/nueva');
+        router.push('/pages/nueva/informe');
     };
     
 
@@ -366,6 +445,34 @@ export default function Page() {
         console.log('Recolección de puntos finalizada');
         console.log('Puntos de página generada:', gazeDataArray);
     };
+
+    const handleAddToCart = () => {
+        const selectedImage = product.images[activeImageIndex]; // Imagen activa
+    
+        const newItem: CartItem = {
+            product: product.name,
+            color: selectedColor.name,
+            size: selectedSize.name,
+            image: selectedImage?.src || "https://via.placeholder.com/50", // Imagen activa
+            alt: selectedImage?.alt || "Sin descripción", // Descripción de la imagen activa
+        };
+    
+        setCartItems((prevCart) => {
+            const updatedCart = [...prevCart, newItem];
+            localStorage.setItem("cartItems", JSON.stringify(updatedCart));
+            return updatedCart;
+        });
+    
+        alert(`Añadido al carrito: ${product.name}, Imagen: ${selectedImage.alt}`);
+    };
+
+    const handleClearCart = () => {
+        setCartItems([]); // Vacía el estado del carrito
+        localStorage.removeItem("cartItems"); // Elimina los datos del carrito del localStorage
+        alert("Carrito limpiado"); // Mensaje de confirmación
+    };
+    
+    
 /*
     if (isLoading) {
         return <div id="loading">Loading...</div>;
@@ -373,22 +480,55 @@ export default function Page() {
 */
     return (
         <div>
+            <div className="fixed top-4 right-10 z-50">
+                <button
+                    onClick={toggleCartModal}
+                    className="relative flex items-center p-2 rounded-full bg-blue-300 hover:bg-blue-100"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="w-6 h-6 text-gray-700"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3 3h2l.4 2M7 13h10l1.4-7H6.6L7 13zm-4 0h18M6 17a2 2 0 100 4 2 2 0 000-4zm12 0a2 2 0 100 4 2 2 0 000-4z"
+                        />
+                    </svg>
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                        {cartItems.length}
+                    </span>
+                </button>
+            </div>
+
             {!showHighlightedPage ? (
                 <main id="main-content" className="flex h-screen items-center justify-center p-2">
                     <h1 id="page-title" className={`${lusitana.className} mb-2 text-lg`}></h1>
                     <MousePosition />
                     {/*<GazeEventChecker gazeEvents={data} />*/}
 
-                    <div className="flex w-full h-full max-w-screen-xl">
+                    <div className="flex w-full h-full max-w-screen-xxl">
                         <div id="image-gallery" className="flex-1 h-full p-2">
-                            <Carousel showArrows={true} infiniteLoop={true} showThumbs={false} className="h-full">
-                                {product.images.map((image, index) => (
-                                    <div key={index} className="h-full">
-                                        <img src={image.src} alt={image.alt} className="object-cover object-center h-full border border-red-500" />
-                                        <p className="text-xs text-red-500">{`ID: image${index + 1}`}</p>
-                                    </div>
-                                ))}
-                            </Carousel>
+                        <Carousel
+                            showArrows={true}
+                            infiniteLoop={true}
+                            showThumbs={false}
+                            className="h-full"
+                            selectedItem={activeImageIndex}
+                            onChange={(index) => setActiveImageIndex(index)} // Actualiza el índice
+                        >
+                            {product.images.map((image, index) => (
+                                <div key={index} className="h-full">
+                                    <img src={image.src} alt={image.alt} className="object-cover object-center h-full border border-red-500" />
+                                    <p className="text-xs text-red-500">{`ID: image${index + 1}`}</p>
+                                </div>
+                            ))}
+                        </Carousel>
+
                         </div>
 
                         <div id="product-details" className="flex-1 h-full overflow-auto bg-white p-2">
@@ -498,7 +638,11 @@ export default function Page() {
                                                     </a>
                                                 </div>
 
-                                                <fieldset id="size-fieldset" aria-label="Choose a size" className="mt-1">
+                                                <fieldset
+                                                    id="size-fieldset"
+                                                    aria-label="Choose a size"
+                                                    className="mt-1"
+                                                >
                                                     <RadioGroup
                                                         id="size-radio-group"
                                                         value={selectedSize}
@@ -515,8 +659,10 @@ export default function Page() {
                                                                     size.inStock
                                                                         ? 'cursor-pointer bg-white text-gray-900 shadow-sm'
                                                                         : 'cursor-not-allowed bg-gray-50 text-gray-200',
-                                                                    'group relative flex items-center justify-center rounded-md border px-2 py-1 text-xs font-medium uppercase hover:bg-gray-50 focus:outline-none data-[focus]:ring-2 data-[focus]:ring-indigo-500 sm:flex-1 sm:py-3',
-                                                                    'border border-red-500'
+                                                                    selectedSize.name === size.name
+                                                                        ? 'ring-2 ring-indigo-500 border-indigo-500' // Resaltar la talla seleccionada
+                                                                        : 'border-gray-300',
+                                                                    'group relative flex items-center justify-center rounded-md border px-2 py-1 text-xs font-medium uppercase hover:bg-gray-50 focus:outline-none sm:flex-1 sm:py-3'
                                                                 )}
                                                             >
                                                                 <span id={`size-span-${size.name}`}>{size.name}</span>
@@ -548,16 +694,19 @@ export default function Page() {
                                                     </RadioGroup>
                                                     <p className="text-xs text-red-500">{`ID: size-radio-group`}</p>
                                                 </fieldset>
+
                                             </div>
 
                                             <button
                                                 id="add-to-bag-button"
-                                                type="submit"
+                                                type="button"
+                                                onClick={handleAddToCart} // Función que se ejecutará al hacer clic
                                                 className="mt-2 flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-1 text-xs font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                                             >
                                                 Add to bag
                                             </button>
                                             <p className="text-xs text-red-500">{`ID: add-to-bag-button`}</p>
+
                                         </form>
                                     </div>
 
@@ -616,12 +765,7 @@ export default function Page() {
                         )}
                     </div>
 
-                    {/* Botón adicional */}
-
-
-                    <button onClick={handleGenerateSuggestion} className="mt-4 inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
-                        Generar Sugerencia
-                    </button>
+                    
 
                     {/* Botones para calibración y recolección de puntos de mirada */}
                     <div id="controls" className="fixed bottom-4 flex gap-4">
@@ -647,6 +791,12 @@ export default function Page() {
                             className="rounded-md bg-yellow-500 px-4 py-2 text-white"
                         >
                             O
+                        </button>
+                        {/* Botón adicional */}
+
+
+                        <button onClick={handleGenerateSuggestion} className="inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
+                        Terminar Tarea
                         </button>
                     </div>
                     {taskDuration !== null && (
@@ -731,6 +881,71 @@ export default function Page() {
                     )}
                 </main>
             )}
+            {isCartOpen && (
+                <>
+                    {/* Fondo oscuro detrás del modal */}
+                    <div
+                        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                        onClick={toggleCartModal}
+                    ></div>
+
+                    {/* Contenido del modal */}
+                    <div className="fixed top-0 right-0 w-80 h-full bg-white shadow-lg z-50">
+                        <div className="p-4">
+                            <h2 className="text-lg font-bold">Carrito</h2>
+                            <ul className="divide-y divide-gray-200">
+                                {cartItems.map((item: CartItem, index) => (
+                                    <li key={index} className="flex items-center gap-4 p-2">
+                                        <img
+                                            src={item.image}
+                                            alt={item.alt} // Usa el alt correspondiente
+                                            className="w-12 h-12 rounded"
+                                        />
+                                        <div>
+                                            <p className="font-medium">{item.product}</p>
+                                            <p className="text-sm text-gray-500">
+                                                {item.alt} {/* Muestra el alt como descripción */}
+                                            </p>
+                                            <p className="text-sm text-gray-500">
+                                                Color: {item.color}, Talla: {item.size}
+                                            </p>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <div className="mt-4 flex items-center justify-between">
+                                <button
+                                    onClick={() => alert("Checkout")}
+                                    className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 mr-2"
+                                >
+                                    Checkout
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setCartItems([]); // Limpia el carrito
+                                        localStorage.removeItem("cartItems"); // Limpia también en localStorage
+                                    }}
+                                    className="flex items-center justify-center rounded-md bg-red-500 p-2 hover:bg-red-600 focus:outline-none"
+                                    title="Limpiar carrito" // Tooltip para accesibilidad
+                                >
+                                    <TrashIcon className="h-5 w-5 text-white" />
+                                </button>
+                            </div>
+
+
+
+                            <button
+                                onClick={toggleCartModal}
+                                className="mt-2 w-full text-indigo-600 underline"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
         </div>
     );
 }
