@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { lusitana } from "../ui/fonts";
 import { useRouter } from 'next/navigation';
 import GazeEventChecker from '../components/GazeEventChecker';
@@ -129,9 +129,21 @@ export default function Page() {
     const [showMatchingElements, setShowMatchingElements] = useState(false); // Estado para controlar la visibilidad del recuadro azul
     const [cartItems, setCartItems] = useState<CartItem[]>([]); // Estado tipado
     const [activeImageIndex, setActiveImageIndex] = useState(0); // Índice de la imagen activa
+    const [isModalOpen, setIsModalOpen] = useState(false); // activa el estado de el modal
 
 
     const [isCartOpen, setIsCartOpen] = useState(false); // Controla el modal
+
+    // Función para manejar el clic en "Recolectar Puntos"
+    const handleRecolectarPuntos = () => {
+        setIsModalOpen(true); // Abre el modal
+    };
+
+    // Función para cerrar el modal y continuar con el flujo
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        iniciarRecoleccion(); // Llama a tu función de recolección de puntos existente
+    };
     
     const toggleCartModal = () => {
         setIsCartOpen(!isCartOpen); // Alterna la visibilidad del modal
@@ -142,6 +154,7 @@ export default function Page() {
 
     // Estados para calibración y recolección de puntos de mirada
     const [gazeDataArray, setGazeDataArray] = useState<Point[]>([]);
+    const collectingRef = useRef(false); // Mantiene el valor actual de `collecting`
     const [collecting, setCollecting] = useState(false);
     const [calibrationComplete, setCalibrationComplete] = useState(false);
     const [startTime, setStartTime] = useState<Date | null>(null); // Guarda la hora de inicio
@@ -280,17 +293,23 @@ export default function Page() {
     
 
     const iniciarRecoleccion = () => {
+
+        if(!calibrationComplete) {
+            console.warn('La calibración no está completa');
+            return;
+        }
         // Inicia el temporizador aquí, no en calibración
         setStartTime(new Date());    // Guarda la hora actual como inicio
         setGazeDataArray([]);        // Reinicia el array de puntos
         setTaskDuration(null);       // Reinicia la duración de la tarea
         setCollecting(true);         // Activa el estado de recolección
+        collectingRef.current = true;
     
         console.log("Recolección de puntos iniciada.");
     
         if (window.GazeCloudAPI) {
             window.GazeCloudAPI.OnResult = function (GazeData: GazeData) {
-                if (collecting) {
+                if (collectingRef.current) {
                     let x = GazeData.docX;
                     let y = GazeData.docY;
     
@@ -438,6 +457,7 @@ export default function Page() {
 
     const finalizarRecoleccion = () => {
         setCollecting(false);
+        collectingRef.current = false;
         setShowGazePoints(false);  // Ocultar los puntos
         if (window.GazeCloudAPI) {
             window.GazeCloudAPI.StopEyeTracking();
@@ -779,12 +799,27 @@ export default function Page() {
                         </button>
                         <button
                             id="collectButton"
-                            onClick={iniciarRecoleccion}
+                            onClick={handleRecolectarPuntos}
                             className="rounded-md bg-green-500 px-4 py-2 text-white"
                             disabled={!calibrationComplete}
                         >
-                            Recolectar Puntos
+                            Comenzar Tarea
                         </button>
+
+                        {/* Modal */}
+                        {isModalOpen && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white p-4 rounded-md shadow-lg text-center">
+                                    <h2 className="text-lg font-bold mb-4">Hola, soy un modal o una ventana</h2>
+                                    <button
+                                        onClick={handleCloseModal}
+                                        className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+                                    >
+                                        Cerrar
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                         <button
                             id="showPointsButton"
                             onClick={toggleGazePoints}
