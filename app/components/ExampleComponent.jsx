@@ -8,7 +8,7 @@ const ExampleComponent = ({ rankedElements }) => {
   const [divs, setDivs] = useState([]);
 
   useEffect(() => {
-    const storedDivs = JSON.parse(localStorage.getItem('previousDivs'));
+    const storedDivs = JSON.parse(sessionStorage.getItem('previousDivs'));
     if (storedDivs) {
       setDivs(storedDivs);
     }
@@ -61,7 +61,7 @@ const ExampleComponent = ({ rankedElements }) => {
           )}
         </div>
       ))}
-      <button onClick={() => setDivs(JSON.parse(localStorage.getItem('previousDivs')))}>Update Div Contents</button>
+      <button onClick={() => setDivs(JSON.parse(sessionStorage.getItem('previousDivs')))}>Update Div Contents</button>
     </div>
   );
 };

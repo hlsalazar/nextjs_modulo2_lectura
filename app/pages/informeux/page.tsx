@@ -160,6 +160,9 @@ const DashboardSkeleton: React.FC = () => {
       min: Math.min(...points.map((p) => p.value)), // Agregar el valor mínimo en los datos
       data: points.map(({ x, y, value }) => ({ x, y, value })),
     };
+
+    console.log("Cantidad de puntos de mirada:", reports.flatMap(report => report.generatedGazeData || []).length);
+
     
     // Renderiza el mapa de calor
     heatmapInstance.setData(heatmapData);

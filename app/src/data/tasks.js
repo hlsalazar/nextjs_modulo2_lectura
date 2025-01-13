@@ -1,6 +1,6 @@
 // src/data/tasks.js
 export const tasks = [
-    { id: 1, description: "Comprar una camiseta blanca talla XS en menos de 5 segundos", conditions: { size: "XS", color: "White", imageAlt: "Model wearing plain white basic tee." }, timeLimit: 5 },
+    { id: 1, description: "Comprar una camiseta blanca talla XS en menos de 5 segundos", conditions: { size: "XS", color: "White", imageAlt: "Model wearing plain white basic tee." }, timeLimit: 10 },
     { id: 2, description: "Comprar una camiseta negra talla S en menos de 6 segundos", conditions: { size: "S", color: "Black", imageAlt: "Model wearing plain black basic tee." }, timeLimit: 6 },
     { id: 3, description: "Comprar una camiseta gris talla M en menos de 7 segundos", conditions: { size: "M", color: "Gray", imageAlt: "Model wearing plain gray basic tee." }, timeLimit: 7 },
     { id: 4, description: "Comprar una camiseta blanca talla L en menos de 8 segundos", conditions: { size: "L", color: "White", imageAlt: "Model wearing plain white basic tee." }, timeLimit: 8 },

@@ -57,6 +57,7 @@ const InformePage: React.FC = () => {
   const heatmapContainerRef = useRef<HTMLDivElement | null>(null);
   const [generatedGazeData, setGeneratedGazeData] = useState<Point[]>([]);
   const colorScale = interpolateRgb("blue", "red"); // Degradado de azul a rojo
+  const [isCompleted, setIsCompleted] = useState<boolean | null>(null); // Estado para verificar si la tarea se completó
 
   const [pageGeneratedGazeData, setPageGeneratedGazeData] = useState<Point[]>(
     []
@@ -76,16 +77,30 @@ const [mostViewedElements, setMostViewedElements] = useState<
   const MAX_CANVAS_WIDTH = 600; // Ajustar el ancho máximo del canvas
   const MAX_CANVAS_HEIGHT = 400; // Ajustar el alto máximo del canvas
 
-  // Cargar datos de localStorage
+  // Cargar datos de sessionStorage
   useEffect(() => {
-    const storedGeneratedGazeData = localStorage.getItem("gazeData");
-    const storedPageGeneratedGazeData = localStorage.getItem("gazeDataGenerado");
-    const storedMostViewedElements = localStorage.getItem("mostViewedElements");
+    const storedTaskStatus = sessionStorage.getItem("task_status");
+    if (storedTaskStatus) {
+      try {
+        const parsedStatus = JSON.parse(storedTaskStatus);
+        setIsCompleted(parsedStatus.completed || false); // Asegúrate de establecer el estado correctamente
+      } catch (error) {
+        console.error("Error al parsear isCompleted desde sessionStorage:", error);
+        setIsCompleted(null);
+      }
+    } else {
+      console.warn("No se encontró estado de tarea en sessionStorage.");
+    }
+  
+    // Recuperar datos adicionales
+    const storedGeneratedGazeData = sessionStorage.getItem("gazeData");
+    const storedPageGeneratedGazeData = sessionStorage.getItem("gazeDataGenerado");
+    const storedMostViewedElements = sessionStorage.getItem("mostViewedElements");
   
     if (storedGeneratedGazeData) {
       try {
         const data = JSON.parse(storedGeneratedGazeData);
-        console.log("Puntos cargados desde localStorage:", data);
+        console.log("Puntos cargados desde sessionStorage:", data);
         setGeneratedGazeData(data);
       } catch (error) {
         console.error("Error al parsear gazeData:", error);
@@ -105,13 +120,14 @@ const [mostViewedElements, setMostViewedElements] = useState<
     if (storedMostViewedElements) {
       try {
         const elements = JSON.parse(storedMostViewedElements);
-        console.log("Elementos más vistos cargados desde localStorage:", elements);
+        console.log("Elementos más vistos cargados desde sessionStorage:", elements);
         setMostViewedElements(elements);
       } catch (error) {
         console.error("Error al parsear mostViewedElements:", error);
       }
     }
   }, []);
+  
   
 
   // Crear el mapa de calor
@@ -172,19 +188,19 @@ const [mostViewedElements, setMostViewedElements] = useState<
 
   // FUNCION PARA CALCULAR LOS ELEMENTOS MAS VISTOS
 
-  const getMostViewedElementsFromLocalStorage = () => {
-    const storedMostViewedElements = localStorage.getItem("mostViewedElements");
+  const getMostViewedElementsFromsessionStorage = () => {
+    const storedMostViewedElements = sessionStorage.getItem("mostViewedElements");
     if (storedMostViewedElements) {
       try {
         const elements = JSON.parse(storedMostViewedElements);
-        console.log("Elementos más vistos cargados desde localStorage:", elements);
+        console.log("Elementos más vistos cargados desde sessionStorage:", elements);
         return elements;
       } catch (error) {
         console.error("Error al parsear los elementos más vistos:", error);
         return [];
       }
     } else {
-      console.warn("No se encontraron elementos más vistos en localStorage.");
+      console.warn("No se encontraron elementos más vistos en sessionStorage.");
       return [];
     }
   };
@@ -307,19 +323,21 @@ const saveReportToFirebase = async () => {
   }
 
   try {
-    // Recupera el tiempo de la tarea desde localStorage
-    const taskDuration = localStorage.getItem("taskDuration");
+    // Recupera el tiempo de la tarea desde sessionStorage
+    const taskDuration = sessionStorage.getItem("taskDuration");
 
     // Valida que los datos sean correctos antes de construir el objeto
     console.log("Generated gaze data:", generatedGazeData);
     console.log("Page generated gaze data:", pageGeneratedGazeData);
     console.log("Most viewed elements to db:", mostViewedElements);
+    console.log("Task completa:", isCompleted);
 
     // Construye el objeto de datos
     const reportData = {
       generatedGazeData,
       pageGeneratedGazeData,
       taskDuration: taskDuration ? Number(taskDuration) : 0, // Convierte a número si existe
+      isCompleted, // verifica si la taera s ecompleto correctametne 
       timestamp: new Date().toISOString(),
       mostViewedElements, // Asegúrate de incluir estos datos correctamente
     };

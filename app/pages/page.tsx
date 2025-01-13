@@ -11,6 +11,7 @@ import "react-responsive-carousel/lib/styles/carousel.min.css";
 import { Carousel } from 'react-responsive-carousel';
 import Link from 'next/link';
 import { TrashIcon } from '@heroicons/react/24/outline'; // Asegúrate de importar el ícono
+import { tasks } from '../src/data/tasks';
 
 interface Point {
     x: number;
@@ -30,6 +31,16 @@ interface CartItem {
     alt: string; // Agregar la propiedad alt
 }
 
+interface Task {
+    id: number;
+    description: string;
+    conditions: {
+        size: string;
+        color: string;
+        imageAlt: string;
+    };
+    timeLimit: number;
+}
 
 
 
@@ -62,6 +73,8 @@ function getMostFrequentPoints(data: Point[], tolerance: number = 5): (Point & {
     const sortedPoints = Object.values(counts).sort((a, b) => b.count - a.count);
     return sortedPoints.slice(0, 5);
 }
+
+
 
 const product = {
     name: 'Basic Tee 6-Pack',
@@ -130,6 +143,8 @@ export default function Page() {
     const [cartItems, setCartItems] = useState<CartItem[]>([]); // Estado tipado
     const [activeImageIndex, setActiveImageIndex] = useState(0); // Índice de la imagen activa
     const [isModalOpen, setIsModalOpen] = useState(false); // activa el estado de el modal
+    const [taskCode, setTaskCode] = useState("");
+    const [taskInstruction, setTaskInstruction] = useState("");
 
 
     const [isCartOpen, setIsCartOpen] = useState(false); // Controla el modal
@@ -143,7 +158,40 @@ export default function Page() {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         iniciarRecoleccion(); // Llama a tu función de recolección de puntos existente
+        setTaskInstruction(""); // Limpiar la instrucción mostrada
+        setStartTime(new Date());    // Guarda la hora actual como inicio
+
     };
+
+    const handleStartTask = () => {
+        const task = tasks.find((t) => t.id === parseInt(taskCode));
+        console.log("Tarea seleccionada:", taskCode);
+
+
+        if (task) {
+            setTaskInstruction(task.description);
+        } else {
+            alert("Código de tarea no válido. Inténtalo nuevamente.");
+        }
+    };
+
+
+    const handleCompleteTask = () => {
+        if (startTime) {
+            const endTime = new Date();
+            const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000); // Duración en segundos
+            setTaskDuration(duration); // Actualiza el estado para otros usos
+            sessionStorage.setItem("taskDuration", duration.toString()); // Almacena directamente en sessionStorage
+            console.log(`Tiempo total de tarea: ${duration} segundos`);
+        } else {
+            console.warn("No se ha iniciado la tarea correctamente.");
+            alert("Error interno: La tarea no ha comenzado correctamente.");
+        }
+    };
+    
+    
+    
+    
     
     const toggleCartModal = () => {
         setIsCartOpen(!isCartOpen); // Alterna la visibilidad del modal
@@ -201,15 +249,15 @@ export default function Page() {
     
             setElementsWithPoints(elementsPoints);
     
-            // Calcular elementos más vistos y guardar en localStorage
+            // Calcular elementos más vistos y guardar en sessionStorage
             const mostViewedElements = calculateMostViewedElements(elementsPoints);
             console.log('Elementos más vistos:', mostViewedElements);
-            localStorage.setItem('mostViewedElements', JSON.stringify(mostViewedElements));
+            sessionStorage.setItem('mostViewedElements', JSON.stringify(mostViewedElements));
         }
     }, [isLoading, gazeDataArray]);
 
     useEffect(() => {
-        const storedCart = localStorage.getItem("cartItems");
+        const storedCart = sessionStorage.getItem("cartItems");
         if (storedCart) {
             setCartItems(
                 JSON.parse(storedCart).map((item: Partial<CartItem>) => ({
@@ -221,29 +269,89 @@ export default function Page() {
             );
         }
     }, []);
+
+    
+
+    
+
+    useEffect(() => {
+        if (taskDuration === null) return; // No hacer nada si taskDuration no está definido
+    
+        const selectedTask = tasks.find((t) => t.id === parseInt(taskCode));
+    
+        if (!selectedTask) {
+            console.warn("No se encontró una tarea con el código ingresado.");
+            alert("Código de tarea no válido. Inténtalo nuevamente.");
+            return;
+        }
+    
+        if (cartItems.length === 0) {
+            console.warn("No hay elementos en el carrito para comparar.");
+            alert("No se encontraron elementos en el carrito.");
+            return;
+        }
+    
+        // Normalizar y comparar
+        const normalize = (str: string) => (str || "").trim().toLowerCase();
+    
+        const matchedItem = cartItems.find(
+            (item) =>
+                normalize(item.size) === normalize(selectedTask.conditions.size) &&
+                normalize(item.color) === normalize(selectedTask.conditions.color) &&
+                normalize(item.alt) === normalize(selectedTask.conditions.imageAlt)
+        );
+    
+        console.log("item info:", selectedTask.conditions.size, selectedTask.conditions.color, selectedTask.conditions.imageAlt);
+        console.log("Cart Items:", cartItems);
+        console.log("Matched Item:", matchedItem);
+    
+        if (!matchedItem) {
+            console.warn("No se encontraron elementos coincidentes en el carrito.");
+            alert("Tarea no completada. No hay coincidencias en el carrito.");
+            return;
+        }
+    
+        const isCompleted = taskDuration <= selectedTask.timeLimit;
+    
+        sessionStorage.setItem(
+            `task_status`,
+            JSON.stringify({ completed: isCompleted, taskDuration })
+        );
+    
+        if (isCompleted) {
+            alert(`¡Tarea completada con éxito en ${taskDuration} segundos!`);
+            console.log(`Tarea completada: ${isCompleted}`);
+        } else {
+            alert(`Tarea no completada. Tiempo límite: ${selectedTask.timeLimit} segundos.`);
+        }
+
+        //funcion para generar sugerencia
+        handleGenerateSuggestion();
+    }, [taskDuration]);
+    
     
     
     
 
     useEffect(() => {
-        const storedGazeData = localStorage.getItem("gazeDataArray");
+        const storedGazeData = sessionStorage.getItem("gazeDataArray");
         if (storedGazeData) {
             setGazeDataArray(JSON.parse(storedGazeData));
-            console.log("Datos de mirada cargados desde localStorage.");
+            console.log("Datos de mirada cargados desde sessionStorage.");
         } else {
-            console.log("No se encontraron datos de mirada en localStorage.");
+            console.log("No se encontraron datos de mirada en sessionStorage.");
         }
     }, []);
     
 
     useEffect(() => {
-        const isFirstRun = localStorage.getItem("firstRun");
+        const isFirstRun = sessionStorage.getItem("firstRun");
     
         if (!isFirstRun) {
             // Limpia los datos de mirada y carrito la primera vez
-            localStorage.removeItem("gazeDataArray"); // Limpia datos de mirada
-            localStorage.removeItem("cartItems"); // Limpia datos del carrito
-            localStorage.setItem("firstRun", "true"); // Marca que ya no es la primera vez
+            sessionStorage.removeItem("gazeDataArray"); // Limpia datos de mirada
+            sessionStorage.removeItem("cartItems"); // Limpia datos del carrito
+            sessionStorage.setItem("firstRun", "true"); // Marca que ya no es la primera vez
             console.log("Datos limpiados por ser la primera vez que se inicia la aplicación.");
         } else {
             console.log("Datos preservados. No es la primera vez que se inicia la aplicación.");
@@ -299,7 +407,6 @@ export default function Page() {
             return;
         }
         // Inicia el temporizador aquí, no en calibración
-        setStartTime(new Date());    // Guarda la hora actual como inicio
         setGazeDataArray([]);        // Reinicia el array de puntos
         setTaskDuration(null);       // Reinicia la duración de la tarea
         setCollecting(true);         // Activa el estado de recolección
@@ -327,9 +434,10 @@ export default function Page() {
     
                     setGazeDataArray((prevArray) => {
                         const updatedArray = [...prevArray, newPoint];
-                        localStorage.setItem("gazeDataArray", JSON.stringify(updatedArray));
+                        sessionStorage.setItem("gazeData", JSON.stringify(updatedArray)); // Almacenar correctamente
+                        sessionStorage.setItem("gazeDataArray", JSON.stringify(updatedArray)); // Para la sesión actual
                         return updatedArray;
-                    });
+                      });                      
                 }
             };
         } else {
@@ -338,7 +446,7 @@ export default function Page() {
     };
 
     const handleSaveAndNavigate = () => {
-        const mostViewedElements = localStorage.getItem('mostViewedElements');
+        const mostViewedElements = sessionStorage.getItem('mostViewedElements');
         if (!mostViewedElements) {
             console.warn('No se han generado elementos más vistos.');
             alert('Por favor, asegúrate de recolectar datos antes de guardar el informe.');
@@ -348,15 +456,16 @@ export default function Page() {
         console.log('Elementos más vistos guardados:', JSON.parse(mostViewedElements));
 
         // Guarda datos clave antes de navegar
-        localStorage.setItem("cartItems", JSON.stringify(cartItems));
-        localStorage.setItem("gazeDataArray", JSON.stringify(gazeDataArray));
+        sessionStorage.setItem("cartItems", JSON.stringify(cartItems));
+        sessionStorage.setItem("gazeDataArray", JSON.stringify(gazeDataArray));
 
-        // 2. Verifica los datos que estás guardando en localStorage para cartItems y gazeDataArray
-        console.log("Cart Items guardados:", JSON.parse(localStorage.getItem("cartItems") || "[]"));
-        console.log("Puntos de mirada guardados:", JSON.parse(localStorage.getItem("gazeDataArray") || "[]"));
+        // 2. Verifica los datos que estás guardando en sessionStorage para cartItems y gazeDataArray
+        console.log("Cart Items guardados:", JSON.parse(sessionStorage.getItem("cartItems") || "[]"));
+        console.log("Puntos de mirada guardados:", JSON.parse(sessionStorage.getItem("gazeDataArray") || "[]"));
         
     
         router.push('/pages/nueva/informe');
+        
     };
     
 
@@ -366,7 +475,7 @@ export default function Page() {
 
     const handleClickEsconder = () => {
         setShowHighlightedPage(false);
-        saveElementsToLocalStorage();
+        saveElementsTosessionStorage();
     };
 
     const handleShowMatchingElements = () => {
@@ -377,7 +486,7 @@ export default function Page() {
         setShowMatchingElements(false);
     };
 
-    const saveElementsToLocalStorage = () => {
+    const saveElementsTosessionStorage = () => {
         const elements = document.querySelectorAll<HTMLElement>(
             "[id^='image'], #product-name, #product-price, #reviews-link, #color-label, [id^='color-span-'], #size-label, #size-guide, [id^='size-span-'], #add-to-bag-button, #description-text, #highlights-list, [id^='highlight-span-'], #details-text"
         );
@@ -393,14 +502,14 @@ export default function Page() {
             };
         });
 
-        localStorage.setItem('previousDivs', JSON.stringify(elementsData));
+        sessionStorage.setItem('previousDivs', JSON.stringify(elementsData));
 
         const content = document.querySelectorAll('#image-gallery, #product-details, #product-description');
         const contentArray = Array.from(content).map((element) => element.outerHTML);
-        localStorage.setItem('pageContent', JSON.stringify(contentArray));
+        sessionStorage.setItem('pageContent', JSON.stringify(contentArray));
 
-        console.log('Elementos guardados en localStorage:', elementsData);
-        console.log('ElementsWithPoints guardado en localStorage:', elementsWithPoints);
+        console.log('Elementos guardados en sessionStorage:', elementsData);
+        console.log('ElementsWithPoints guardado en sessionStorage:', elementsWithPoints);
     };
 
     const handleGenerateSuggestion = () => {
@@ -408,21 +517,13 @@ export default function Page() {
         setCollecting(false);
         if (window.GazeCloudAPI) window.GazeCloudAPI.StopEyeTracking();
     
-        // Calcula el tiempo total
-        if (startTime) {
-            const endTime = new Date();
-            const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000); // Duración en segundos
-            setTaskDuration(duration);
-            console.log(`Tiempo total de tarea: ${duration} segundos`);
-            localStorage.setItem('taskDuration', duration.toString());
-        }
     
-        // Guarda los puntos en localStorage
-        localStorage.setItem('gazeData', JSON.stringify(gazeDataArray));
+        // Guarda los puntos en sessionStorage
+        sessionStorage.setItem('gazeData', JSON.stringify(gazeDataArray));
         console.log('Puntos guardados:', gazeDataArray);
 
         // Guarda los elementos más vistos
-        const mostViewedElements = localStorage.getItem('mostViewedElements');
+        const mostViewedElements = sessionStorage.getItem('mostViewedElements');
         console.log('Guardando elementos más vistos en local storage:', mostViewedElements);
 
     
@@ -479,7 +580,7 @@ export default function Page() {
     
         setCartItems((prevCart) => {
             const updatedCart = [...prevCart, newItem];
-            localStorage.setItem("cartItems", JSON.stringify(updatedCart));
+            sessionStorage.setItem("cartItems", JSON.stringify(updatedCart));
             return updatedCart;
         });
     
@@ -488,7 +589,7 @@ export default function Page() {
 
     const handleClearCart = () => {
         setCartItems([]); // Vacía el estado del carrito
-        localStorage.removeItem("cartItems"); // Elimina los datos del carrito del localStorage
+        sessionStorage.removeItem("cartItems"); // Elimina los datos del carrito del sessionStorage
         alert("Carrito limpiado"); // Mensaje de confirmación
     };
     
@@ -723,7 +824,7 @@ export default function Page() {
                                                 onClick={handleAddToCart} // Función que se ejecutará al hacer clic
                                                 className="mt-2 flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-1 text-xs font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                                             >
-                                                Add to bag
+                                                Añadir al carrito
                                             </button>
                                             <p className="text-xs text-red-500">{`ID: add-to-bag-button`}</p>
 
@@ -810,16 +911,57 @@ export default function Page() {
                         {isModalOpen && (
                             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                                 <div className="bg-white p-4 rounded-md shadow-lg text-center">
-                                    <h2 className="text-lg font-bold mb-4">Hola, soy un modal o una ventana</h2>
-                                    <button
-                                        onClick={handleCloseModal}
-                                        className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-                                    >
-                                        Cerrar
-                                    </button>
+                                    <h2 className="text-lg font-bold mb-4">Ingrese el código de la tarea</h2>
+
+                                    {/* Campo para ingresar el código de la tarea */}
+                                    <input
+                                        type="text"
+                                        value={taskCode}
+                                        onChange={(e) => setTaskCode(e.target.value)}
+                                        className="border p-2 rounded w-full"
+                                        placeholder="Código de tarea"
+                                        disabled={!!taskInstruction} // Deshabilitar si ya se muestra la instrucción
+                                    />
+
+                                    {/* Muestra la instrucción de la tarea si se encuentra */}
+                                    {taskInstruction && (
+                                        <div className="mt-6 p-4 rounded-md border-2 border-green-500 bg-green-50">
+                                            <h3 className="text-lg font-semibold text-green-700 mb-2">Instrucción de la Tarea</h3>
+                                            <p className="text-sm text-green-600">
+                                                {taskInstruction}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Botones para enviar el código o comenzar la tarea */}
+                                    <div className="flex justify-center mt-4 gap-2">
+                                        {taskInstruction ? (
+                                            <button
+                                                onClick={() => {
+                                                    handleCloseModal(); // Cierra el modal
+                                                    iniciarRecoleccion(); // Comienza la recolección
+                                                }}
+                                                className="rounded-md bg-green-500 px-4 py-2 text-white hover:bg-green-600"
+                                            >
+                                                Empezar Tarea
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={handleStartTask} // Valida el código e inicia la tarea
+                                                className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+                                            >
+                                                Enviar Código
+                                            </button>
+                                        )}
+                                        
+                                    </div>
+
+
                                 </div>
                             </div>
                         )}
+
+
                         <button
                             id="showPointsButton"
                             onClick={toggleGazePoints}
@@ -830,7 +972,7 @@ export default function Page() {
                         {/* Botón adicional */}
 
 
-                        <button onClick={handleGenerateSuggestion} className="inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
+                        <button onClick={handleCompleteTask} className="inline-block rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">
                         Terminar Tarea
                         </button>
                     </div>
@@ -959,7 +1101,7 @@ export default function Page() {
                                 <button
                                     onClick={() => {
                                         setCartItems([]); // Limpia el carrito
-                                        localStorage.removeItem("cartItems"); // Limpia también en localStorage
+                                        sessionStorage.removeItem("cartItems"); // Limpia también en sessionStorage
                                     }}
                                     className="flex items-center justify-center rounded-md bg-red-500 p-2 hover:bg-red-600 focus:outline-none"
                                     title="Limpiar carrito" // Tooltip para accesibilidad
