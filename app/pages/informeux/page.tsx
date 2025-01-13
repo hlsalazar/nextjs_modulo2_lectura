@@ -37,6 +37,8 @@ const DashboardSkeleton: React.FC = () => {
   const [noisePoints, setNoisePoints] = useState<any[]>([]);
   const [preprocessedPoints, setPreprocessedPoints] = useState<any[]>([]);//estado para los puntos pre procesados
   const heatmapContainerRef = useRef<HTMLDivElement | null>(null);
+  const [scatterTaskData, setScatterTaskData] = useState<any>({ datasets: [] });//estado para los puntos de tarea completadas y tiempo
+
 
 
   
@@ -74,6 +76,8 @@ const DashboardSkeleton: React.FC = () => {
     return points.filter(({ x, y }) => densityMap.get(`${x},${y}`)! >= threshold);
   };
 
+  
+
   //Funcion para pre procesar los datos para el mapa de calor
 
   // Función para normalizar y preprocesar los puntos de mirada
@@ -100,6 +104,7 @@ const DashboardSkeleton: React.FC = () => {
   
     return normalizedPoints;
   };
+
   
 
 
@@ -138,6 +143,41 @@ const DashboardSkeleton: React.FC = () => {
   const toggleExpandCard = (index: number) => {
     setExpandedCard(expandedCard === index ? null : index); // Alternar expansión
   };
+
+  const processTaskData = (data: any[]) => {
+    const taskPoints = data
+      .filter((report) => report.isCompleted && report.taskDuration) // Filtrar tareas completadas con duración
+      .map((report) => ({
+        x: report.taskDuration, // Duración de la tarea (minutos)
+        y: 1, // Cada tarea completada cuenta como 1
+      }));
+  
+    // Agrupar por duración y contar tareas completadas
+    const aggregatedData = taskPoints.reduce((acc: { x: number; y: number }[], point) => {
+      const existing = acc.find((p: any) => p.x === point.x);
+      if (existing) {
+        existing.y += 1; // Incrementar el conteo de tareas
+      } else {
+        acc.push({ ...point });
+      }
+      return acc;
+    }, []);
+  
+    const scatterDataset = {
+      datasets: [
+        {
+          label: "Relación Tareas vs. Tiempo",
+          data: aggregatedData,
+          backgroundColor: "rgba(54, 162, 235, 0.6)",
+          borderColor: "rgba(54, 162, 235, 1)",
+          pointRadius: 6,
+        },
+      ],
+    };
+  
+    setScatterTaskData(scatterDataset);
+  };
+  
 
 
   const generateHeatmap = (containerId: string, points: { x: number; y: number; value: number }[]): void => {
@@ -210,6 +250,43 @@ const DashboardSkeleton: React.FC = () => {
       },
     },
   };
+
+  const scatterTaskOptions = {
+    responsive: true,
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: (context: any) =>
+            `Duración: ${context.raw.x} min, Tareas: ${context.raw.y}`,
+        },
+      },
+      legend: {
+        display: true,
+        position: "top" as const,
+      },
+      title: {
+        display: true,
+        text: "Relación entre Tareas Completadas y Duración",
+      },
+    },
+    scales: {
+      x: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: "Duración de la Tarea (segundos)",
+        },
+      },
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: "Cantidad de Tareas Completadas",
+        },
+      },
+    },
+  };
+  
   // Ejecutar DBSCAN
   const runDBSCAN = () => {
     setClusters([]);
@@ -337,6 +414,7 @@ const DashboardSkeleton: React.FC = () => {
       const data = await fetchReports(); // Llama a fetchReports y obtiene los datos
       if (data && data.length > 0) {
         calculateImportantElements(data); // Calcula los elementos más importantes
+        processTaskData(data); // Procesa los datos para el gráfico de relación
   
         const container = document.querySelector("#heatmapContainer") as HTMLElement;
         if (container) {
@@ -793,6 +871,20 @@ const DashboardSkeleton: React.FC = () => {
             )}
           </div>
         </section>
+        
+        {/* Gráfico de dispersión */}
+
+        <section style={styles.statsSection}>
+          <h3 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "20px" }}>
+            Relación entre Tareas Completadas y Duración
+          </h3>
+          {scatterTaskData.datasets.length > 0 ? (
+            <Scatter data={scatterTaskData} options={scatterTaskOptions} />
+          ) : (
+            <p>No hay datos suficientes para mostrar el gráfico.</p>
+          )}
+        </section>
+
 
 
 
